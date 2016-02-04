@@ -155,7 +155,7 @@ func TestDayTimes(t *testing.T) {
 	})
 }
 
-func TestActiveAt(t *testing.T) {
+func TestDayActiveAt(t *testing.T) {
 	Convey("Given a Day of Monday with start time 02:00 and duration 04:00", t, func() {
 		day := Day{
 			Group:    "0",
@@ -194,7 +194,7 @@ func TestActiveAt(t *testing.T) {
 	})
 }
 
-func TestToExternal(t *testing.T) {
+func TestDayToExternal(t *testing.T) {
 	Convey("Given a Day with start time 02:00 and duration 04:00", t, func() {
 		day := Day{
 			Group:    "0",
