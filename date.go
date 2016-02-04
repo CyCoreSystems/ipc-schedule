@@ -111,8 +111,3 @@ func (e *DateExternal) ToDate() (*Date, error) {
 	return &ret, nil
 
 }
-
-// Parse the provided YYYY-MM-DD date
-func parseDate(d string) (time.Time, error) {
-	return time.Parse("2006-01-02", d)
-}
