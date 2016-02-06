@@ -84,7 +84,7 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
 	var first bool = true
-	var dates []Date
+	var dates []*Date
 	for {
 		rec, err := r.Read()
 		if err != nil && err != io.EOF {
@@ -121,7 +121,7 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
 	var first bool = true
-	var days []Day
+	var days []*Day
 	for {
 		rec, err := r.Read()
 		if err != nil && err != io.EOF {
