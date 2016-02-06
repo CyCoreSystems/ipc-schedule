@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
-	"fmt"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -18,6 +17,11 @@ type Group struct {
 	Location *time.Location // Location / timezone
 }
 
+// Key returns the BoltDB keyname for the group
+func (g *Group) Key() []byte {
+	return []byte{g.ID}
+}
+
 func getGroup(id string) (g Group, err error) {
 	db.View(func(tx *bolt.Tx) error {
 		return decodeGroup(tx.Bucket(groupBucket).Get([]byte(id)), &g)
@@ -27,22 +31,16 @@ func getGroup(id string) (g Group, err error) {
 }
 
 func saveGroup(g Group) error {
-	b, err := encodeGroup(&g)
-	if err != nil {
-		return err
-	}
+	b := encodeGroup(&g)
 	return db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(groupBucket).Put([]byte(g.ID), b)
 	})
 }
 
-func encodeGroup(g *Group) ([]byte, error) {
+func encodeGroup(g *Group) []byte {
 	var buf bytes.Buffer
-	err := gob.NewEncoder(&buf).Encode(g)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to encode group: %s", err.Error())
-	}
-	return buf.Bytes(), nil
+	gob.NewEncoder(&buf).Encode(g)
+	return buf.Bytes()
 }
 
 func decodeGroup(data []byte, g *Group) error {

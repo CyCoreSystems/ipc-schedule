@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
 
 // Date represents a schedule for a specific date
@@ -11,6 +15,68 @@ type Date struct {
 	Target string        // The target number
 	Date   time.Time     // Start timestamp of event
 	Time   time.Duration // Duration of event
+}
+
+// TimeToDateKey returns the BoltDB "date" bucket key for the
+// given time.
+func TimeToDateKey(t time.Time) []byte {
+	return []byte{t.String()}
+}
+
+// DateRangeFor returns the BoltDB "date" bucket keys for
+// the start and stop range filters to find Dates which
+// may be applicable for the given time.
+// We return -48hours and current.
+func DateRangeFor(t time.Time) (from, to []byte) {
+	start := t.Add(-48 * time.Hour)
+	return TimeToDateKey(start), TimeToDateKey(t)
+}
+
+// ActiveDate returns the currently-active Date in the schedule.
+func ActiveDate(g *Group, t time.Time) *Date {
+	var d Date
+	var err error
+
+	from, to := DateRangeFor(t)
+
+	err = db.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(g.Key()).Bucket(DatesBucket).Cursor()
+		for k, v := c.Seek(from); k != nil && bytes.Compare(k, to) <= 0; k, v = c.Next() {
+			err = decodeDate(v, &d)
+			if d.Group != g.ID {
+				continue
+			}
+			if err != nil {
+				fmt.Println("Failed to decode date", v, err)
+				continue
+			}
+			if d.ActiveAt(t) {
+				// Found
+				return nil
+			}
+		}
+		return fmt.Errorf("No active date found")
+	})
+	if err != nil {
+		return nil
+	}
+	return &d
+}
+
+// Key returns the BoltDB key for this date
+func (d *Date) Key() []byte {
+	return []byte{d.Date.String()}
+}
+
+// Save stores the Date in the database
+func (d *Date) Save() error {
+	return db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte{d.Group}).CreateBucketIfNotExists(DatesBucket)
+		if err != nil {
+			return err
+		}
+		return b.Put(d.Key(), encodeDate(d))
+	})
 }
 
 // ToExternal exports a Date schedule to its external version
@@ -66,7 +132,7 @@ func (e *DateExternal) ToDate() (*Date, error) {
 	// 0: group
 	ret.Group = e.Group
 	if ret.Group == "" {
-		return nil, fmt.Errorf("Group is mandetory")
+		return nil, fmt.Errorf("Group is mandatory")
 	}
 
 	_, err := getGroup(ret.Group)
@@ -110,4 +176,14 @@ func (e *DateExternal) ToDate() (*Date, error) {
 
 	return &ret, nil
 
+}
+
+func encodeDate(d *Date) []byte {
+	var buf bytes.Buffer
+	gob.NewEncoder(&buf).Encode(g)
+	return buf.Bytes()
+}
+
+func decodeDate(data []byte, d *Date) error {
+	return gob.NewDecoder(bytes.NewReader(data)).Decode(d)
 }

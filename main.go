@@ -37,7 +37,7 @@ func main() {
 
 	// Attach handlers
 	e.Get("/", instructions)
-	//e.Get("/target/:group", getTarget)
+	e.Get("/target/:id", getTarget)
 	//e.Post("/group", addGroup)
 
 	e.Run(":8080")
@@ -53,4 +53,15 @@ func instructions(ctx *echo.Context) error {
 
 func getSchedule(ctx *echo.Context) error {
 	return nil
+}
+
+// getTarget returns the target for the present time
+func getTarget(ctx *echo.Context) error {
+	g, err := getGroup(ctx.Param("id"))
+	if err != nil {
+		return err
+	}
+
+	// See if we have an explicit date entry
+
 }

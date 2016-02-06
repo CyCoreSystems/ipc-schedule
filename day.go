@@ -1,9 +1,24 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"sort"
 	"time"
+
+	"github.com/boltdb/bolt"
 )
+
+// MinDayKey is the BoltDB key of the minimum day
+const MinDayKey = []byte{"0:0000"}
+
+// MaxDayKey is the BoldDB key of the maximum day
+const MaxDayKey = []byte{"6:1440"}
+
+// DaysBucket is the name of the Days bucket in
+// BoltDB
+const DaysBucket = []byte("days")
 
 // Day represents a template schedule for a day of the week
 type Day struct {
@@ -13,6 +28,79 @@ type Day struct {
 	Start    time.Duration  // Time from 00:00
 	Duration time.Duration  // Length of shift
 	Location *time.Location // Location for this schedule
+}
+
+// TimeToDayKey returns the BoltDB "day" bucket key for the current time
+func TimeToDayKey(t time.Time) []byte {
+	minutes := t.Hour()*60 + t.Minute()
+	return []byte{fmt.Sprintf("%d:%02.f", t.Day(), float64(minutes))}
+}
+
+// DayRangeFor returns the BoltDB "day" bucket keys for
+// the start and stop range filters to find Days which
+// may be applicable for the given time.
+// We return -48hours and current.
+func DayRangeFor(t time.Time) (from, to []byte) {
+	start := t.Add(-48 * time.Hour)
+	return TimeToDayKey(start), TimeToDayKey(t)
+}
+
+// ActiveDay returns the currently-active Day in the
+// schedule.
+func ActiveDay(g *Group, t time.Time) *Day {
+	var err error
+	var d Day
+
+	if g == nil {
+		return nil
+	}
+
+	// Day schedules are stored in local time, so convert
+	from, to := DayRangeFor(t.In(g.Location))
+
+	// generate the match func
+	matchFunc := func(a, b []byte) func(tx *bolt.Tx) error {
+		c := tx.Bucket(g.Key()).Bucket(DaysBucket).Cursor()
+		for k, v := c.Seek(a); k != nil && bytes.Compare(k, b) <= 0; k, v = c.Next() {
+			err = decodeDay(v, &d)
+			if d.Group != g.ID {
+				continue
+			}
+			if err != nil {
+				fmt.Println("Failed to decode day", v, err)
+				continue
+			}
+			if d.ActiveAt(t) {
+				return nil
+			}
+		}
+		return fmt.Errorf("No active day found")
+	}
+
+	// Walk through the database until we find the first
+	// active Day
+
+	// If day of `from` is higher than day of `to`,
+	// we have to split our search into two pieces.
+	if sort.StringsAreSorted([]string{string(from[0]), string(to[0])}) {
+		err = db.View(matchFunc(from, to))
+	} else {
+		// Search start time to end of week
+		err = db.View(matchFunc(from, MaxDayKey))
+		if err != nil {
+			// Search start of week to end time
+			err = db.View(matchFunc(MinDayKey, to))
+		}
+	}
+	if err != nil {
+		return nil
+	}
+	return &d
+}
+
+// Key returns the BoltDB key for this day
+func (d *Day) Key() []byte {
+	return []byte{fmt.Sprintf("%d:%02.f", d.Day, d.Start.Minutes())}
 }
 
 // ToExternal exports a Day schedule to its external version
@@ -63,6 +151,17 @@ func (d *Day) Times(now time.Time) (closestStart time.Time, closestStop time.Tim
 	closestStop = closestStart.Add(d.Duration)
 
 	return
+}
+
+// Save stores the Day in the database
+func (d *Day) Save() error {
+	return db.Update(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte{d.Group}).CreateBucketIfNotExists(DaysBucket)
+		if err != nil {
+			return err
+		}
+		return b.Put(d.Key(), encodeDay(d))
+	})
 }
 
 // timeSinceMidnight returns the difference in
@@ -175,4 +274,14 @@ func (e *DayExternal) ToDay() (*Day, error) {
 	}
 
 	return &ret, nil
+}
+
+func encodeDay(d *Day) []byte {
+	var buf bytes.Buffer
+	gob.NewEncoder(&buf).Encode(g)
+	return buf.Bytes()
+}
+
+func decodeDay(data []byte, d *Day) error {
+	return gob.NewDecoder(bytes.NewReader(data)).Decode(d)
 }
