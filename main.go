@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
-	"fmt"
 	"io"
 
 	"github.com/boltdb/bolt"
@@ -76,7 +75,6 @@ func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.C
 		var input io.Reader
 
 		if h, ok := req.Header["Content-Type"]; ok {
-			fmt.Printf("%s\n", h)
 			if h[0] == "text/csv" {
 				i := req.Body
 				defer i.Close()
