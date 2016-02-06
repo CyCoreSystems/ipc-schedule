@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"fmt"
 	"io"
 
 	"github.com/boltdb/bolt"
@@ -38,9 +39,21 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Attach handlers
-	e.Get("/", instructions)
+
+	// Static content
+
+	e.Index("public/index.html")
+	e.Favicon("public/favicon.ico")
+
+	e.Static("/tags", "public/tags")
+	e.Static("/scripts", "public/scripts")
+
+	// Data endpoints
+
 	e.Get("/target/:id", getTarget)
 	//e.Post("/group", addGroup)
+
+	// Import endpoints
 
 	e.Post("/sched/import/days", fileHandler(importDays))
 	e.Post("/sched/import/dates", fileHandler(importDates))
@@ -60,21 +73,25 @@ func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.C
 	return func(ctx *echo.Context) error {
 		req := ctx.Request()
 
-		var err error
-		var input io.ReadCloser
+		var input io.Reader
 
 		if h, ok := req.Header["Content-Type"]; ok {
+			fmt.Printf("%s\n", h)
 			if h[0] == "text/csv" {
-				input = req.Body
+				i := req.Body
+				defer i.Close()
+
+				input = i
 			} else {
-				input, _, err = req.FormFile("file")
+				i, _, err := req.FormFile("file")
 				if err != nil {
 					return err
 				}
+				defer i.Close()
+
+				input = i
 			}
 		}
-
-		defer input.Close()
 
 		return fn(ctx, input)
 	}
