@@ -83,6 +83,8 @@ func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.C
 func importDates(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
+	var first bool = true
+	var dates []Date
 	for {
 		rec, err := r.Read()
 		if err != nil && err != io.EOF {
@@ -93,10 +95,20 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 		}
 
 		date, err := NewDateFromCSV(rec)
+		if err != nil && first {
+			first = false
+			continue // assumem first row is header and skip
+		}
+
+		first = false
 		if err != nil {
 			return err
 		}
 
+		dates = append(dates, date)
+	}
+
+	for _, date := range dates {
 		if err := date.Save(); err != nil {
 			return err
 		}
@@ -108,6 +120,8 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 func importDays(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
+	var first bool = true
+	var days []Day
 	for {
 		rec, err := r.Read()
 		if err != nil && err != io.EOF {
@@ -118,10 +132,21 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 		}
 
 		day, err := NewDayFromCSV(rec)
+		if err != nil && first {
+			first = false
+			continue // assume first row is header and skip
+		}
+
+		first = false
+
 		if err != nil {
 			return err
 		}
 
+		days = append(days, day)
+	}
+
+	for _, day := range days {
 		if err := day.Save(); err != nil {
 			return err
 		}
