@@ -9,6 +9,10 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+var (
+	DatesBucket = []byte("dates")
+)
+
 // Date represents a schedule for a specific date
 type Date struct {
 	Group  string        // The group identifier
@@ -20,7 +24,7 @@ type Date struct {
 // TimeToDateKey returns the BoltDB "date" bucket key for the
 // given time.
 func TimeToDateKey(t time.Time) []byte {
-	return []byte{t.String()}
+	return []byte(t.String())
 }
 
 // DateRangeFor returns the BoltDB "date" bucket keys for
@@ -65,16 +69,21 @@ func ActiveDate(g *Group, t time.Time) *Date {
 
 // Key returns the BoltDB key for this date
 func (d *Date) Key() []byte {
-	return []byte{d.Date.String()}
+	return []byte(d.Date.String())
 }
 
 // Save stores the Date in the database
 func (d *Date) Save() error {
 	return db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte{d.Group}).CreateBucketIfNotExists(DatesBucket)
+		b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
 		if err != nil {
 			return err
 		}
+		b, err = b.CreateBucketIfNotExists(DatesBucket)
+		if err != nil {
+			return err
+		}
+
 		return b.Put(d.Key(), encodeDate(d))
 	})
 }
@@ -180,7 +189,7 @@ func (e *DateExternal) ToDate() (*Date, error) {
 
 func encodeDate(d *Date) []byte {
 	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(g)
+	gob.NewEncoder(&buf).Encode(d)
 	return buf.Bytes()
 }
 

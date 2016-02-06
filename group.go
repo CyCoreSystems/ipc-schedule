@@ -19,7 +19,7 @@ type Group struct {
 
 // Key returns the BoltDB keyname for the group
 func (g *Group) Key() []byte {
-	return []byte{g.ID}
+	return []byte(g.ID)
 }
 
 func getGroup(id string) (g Group, err error) {
@@ -33,7 +33,7 @@ func getGroup(id string) (g Group, err error) {
 func saveGroup(g Group) error {
 	b := encodeGroup(&g)
 	return db.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(groupBucket).Put([]byte(g.ID), b)
+		return tx.Bucket(groupBucket).Put(g.Key(), b)
 	})
 }
 

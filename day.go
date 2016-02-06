@@ -11,14 +11,14 @@ import (
 )
 
 // MinDayKey is the BoltDB key of the minimum day
-const MinDayKey = []byte{"0:0000"}
+var MinDayKey = []byte("0:0000")
 
 // MaxDayKey is the BoldDB key of the maximum day
-const MaxDayKey = []byte{"6:1440"}
+var MaxDayKey = []byte("6:1440")
 
 // DaysBucket is the name of the Days bucket in
 // BoltDB
-const DaysBucket = []byte("days")
+var DaysBucket = []byte("days")
 
 // Day represents a template schedule for a day of the week
 type Day struct {
@@ -33,7 +33,7 @@ type Day struct {
 // TimeToDayKey returns the BoltDB "day" bucket key for the current time
 func TimeToDayKey(t time.Time) []byte {
 	minutes := t.Hour()*60 + t.Minute()
-	return []byte{fmt.Sprintf("%d:%02.f", t.Day(), float64(minutes))}
+	return []byte(fmt.Sprintf("%d:%02.f", t.Day(), float64(minutes)))
 }
 
 // DayRangeFor returns the BoltDB "day" bucket keys for
@@ -60,21 +60,23 @@ func ActiveDay(g *Group, t time.Time) *Day {
 
 	// generate the match func
 	matchFunc := func(a, b []byte) func(tx *bolt.Tx) error {
-		c := tx.Bucket(g.Key()).Bucket(DaysBucket).Cursor()
-		for k, v := c.Seek(a); k != nil && bytes.Compare(k, b) <= 0; k, v = c.Next() {
-			err = decodeDay(v, &d)
-			if d.Group != g.ID {
-				continue
+		return func(tx *bolt.Tx) error {
+			c := tx.Bucket(g.Key()).Bucket(DaysBucket).Cursor()
+			for k, v := c.Seek(a); k != nil && bytes.Compare(k, b) <= 0; k, v = c.Next() {
+				err = decodeDay(v, &d)
+				if d.Group != g.ID {
+					continue
+				}
+				if err != nil {
+					fmt.Println("Failed to decode day", v, err)
+					continue
+				}
+				if d.ActiveAt(t) {
+					return nil
+				}
 			}
-			if err != nil {
-				fmt.Println("Failed to decode day", v, err)
-				continue
-			}
-			if d.ActiveAt(t) {
-				return nil
-			}
+			return fmt.Errorf("No active day found")
 		}
-		return fmt.Errorf("No active day found")
 	}
 
 	// Walk through the database until we find the first
@@ -100,7 +102,7 @@ func ActiveDay(g *Group, t time.Time) *Day {
 
 // Key returns the BoltDB key for this day
 func (d *Day) Key() []byte {
-	return []byte{fmt.Sprintf("%d:%02.f", d.Day, d.Start.Minutes())}
+	return []byte(fmt.Sprintf("%d:%02.f", d.Day, d.Start.Minutes()))
 }
 
 // ToExternal exports a Day schedule to its external version
@@ -156,7 +158,11 @@ func (d *Day) Times(now time.Time) (closestStart time.Time, closestStop time.Tim
 // Save stores the Day in the database
 func (d *Day) Save() error {
 	return db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte{d.Group}).CreateBucketIfNotExists(DaysBucket)
+		b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
+		if err != nil {
+			return err
+		}
+		b, err = b.CreateBucketIfNotExists(DaysBucket)
 		if err != nil {
 			return err
 		}
@@ -278,7 +284,7 @@ func (e *DayExternal) ToDay() (*Day, error) {
 
 func encodeDay(d *Day) []byte {
 	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(g)
+	gob.NewEncoder(&buf).Encode(d)
 	return buf.Bytes()
 }
 
