@@ -136,11 +136,12 @@ func getSchedule(ctx *echo.Context) error {
 
 // getTarget returns the target for the present time
 func getTarget(ctx *echo.Context) error {
-	g, err := getGroup(ctx.Param("id"))
+	_, err := getGroup(ctx.Param("id"))
 	if err != nil {
 		return err
 	}
 
 	// See if we have an explicit date entry
 
+	return nil
 }
