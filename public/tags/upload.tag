@@ -3,14 +3,14 @@
 
 	<div>{status}</div>
 
-	<h4>Upload Date CSV</h4>
-	<form id="dateCsv" onsubmit={uploadDate} method="POST" enctype="multipart/form-data">
+	<h4>Upload Weekday ("Day") CSV</h4>
+	<form id="dayCsv" onsubmit={uploadDay} method="POST" enctype="multipart/form-data">
 		<input id="file" name="file" type="file"/>
 		<button type="submit">Upload</button>
 	</form>
 
-	<h4>Upload Day CSV</h4>
-	<form id="dayCsv" onsubmit={uploadDay} method="POST" enctype="multipart/form-data">
+	<h4>Upload Precise Date ("Date") CSV</h4>
+	<form id="dateCsv" onsubmit={uploadDate} method="POST" enctype="multipart/form-data">
 		<input id="file" name="file" type="file"/>
 		<button type="submit">Upload</button>
 	</form>

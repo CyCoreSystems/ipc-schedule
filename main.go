@@ -36,6 +36,10 @@ func main() {
 	// Attach middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(func(ctx *echo.Context) error {
+		ctx.Set("db", db)
+		return nil
+	})
 
 	// Attach handlers
 
@@ -50,7 +54,9 @@ func main() {
 	// Data endpoints
 
 	e.Get("/target/:id", getTarget)
+	e.Get("/groups", getGroups)
 	//e.Post("/group", addGroup)
+	//e.Put("/group/:id", editGroup)
 
 	// Import endpoints
 
@@ -70,6 +76,7 @@ func instructions(ctx *echo.Context) error {
 
 func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.Context) error {
 	return func(ctx *echo.Context) error {
+		// Parse the attached file
 		req := ctx.Request()
 
 		var input io.Reader
@@ -98,33 +105,17 @@ func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.C
 func importDates(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
-	var first bool = true
-	var dates []*Date
-	for {
-		rec, err := r.Read()
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if err == io.EOF {
-			break
-		}
-
+	var count int
+	for rec, err := r.Read(); err == nil; count++ {
 		date, err := NewDateFromCSV(rec)
-		if err != nil && first {
-			first = false
-			continue // assumem first row is header and skip
-		}
-
-		first = false
 		if err != nil {
-			return err
+			if count > 0 {
+				return err
+			}
+			continue // assume first row is header and skip
 		}
 
-		dates = append(dates, date)
-	}
-
-	for _, date := range dates {
-		if err := date.Save(); err != nil {
+		if err := date.Save(dbFromContext(ctx)); err != nil {
 			return err
 		}
 	}
@@ -135,34 +126,26 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 func importDays(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
-	var first bool = true
-	var days []*Day
-	for {
-		rec, err := r.Read()
-		if err != nil && err != io.EOF {
-			return err
-		}
-		if err == io.EOF {
-			break
-		}
-
-		day, err := NewDayFromCSV(rec)
-		if err != nil && first {
-			first = false
+	var count int
+	for rec, err := r.Read(); err == nil; count++ {
+		// Convert the row to a Day
+		day, err := NewDayFromCSVRow(rec)
+		if err != nil {
+			if count > 0 {
+				return err
+			}
 			continue // assume first row is header and skip
 		}
 
-		first = false
-
+		// Add the location
+		g, err := getGroup(dbFromContext(ctx), ctx.Param("group"))
 		if err != nil {
 			return err
 		}
+		day.Location = g.Location
 
-		days = append(days, day)
-	}
-
-	for _, day := range days {
-		if err := day.Save(); err != nil {
+		// Save the Day
+		if err := day.Save(dbFromContext(ctx)); err != nil {
 			return err
 		}
 	}
@@ -176,7 +159,7 @@ func getSchedule(ctx *echo.Context) error {
 
 // getTarget returns the target for the present time
 func getTarget(ctx *echo.Context) error {
-	_, err := getGroup(ctx.Param("id"))
+	_, err := getGroup(dbFromContext(ctx), ctx.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -184,4 +167,12 @@ func getTarget(ctx *echo.Context) error {
 	// See if we have an explicit date entry
 
 	return nil
+}
+
+func getGroups(ctx *echo.Context) error {
+	list, err := allGroups(dbFromContext(ctx))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(200, list)
 }

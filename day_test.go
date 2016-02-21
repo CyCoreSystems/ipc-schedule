@@ -352,7 +352,7 @@ func TestNewDayFromCSV(t *testing.T) {
 		row := []string{"testGroup", "Mon", "02:00", "1234"}
 
 		Convey("day conversion should fail", func() {
-			_, err := NewDayFromCSV(row)
+			_, err := NewDayFromCSVRow(row)
 			So(err, ShouldNotBeNil)
 		})
 	})
@@ -361,7 +361,7 @@ func TestNewDayFromCSV(t *testing.T) {
 		row := []string{"testGroup", "Mon", "02:00", "06:00", "1234"}
 
 		Convey("The resulting Day should be congruent", func() {
-			day, err := NewDayFromCSV(row)
+			day, err := NewDayFromCSVRow(row)
 			So(err, ShouldBeNil)
 			So(day.Group, ShouldEqual, "testGroup")
 			So(day.Day, ShouldEqual, time.Monday)

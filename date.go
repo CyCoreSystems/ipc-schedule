@@ -9,9 +9,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-var (
-	DatesBucket = []byte("dates")
-)
+var datesBucket = []byte("dates")
 
 // Date represents a schedule for a specific date
 type Date struct {
@@ -37,14 +35,14 @@ func DateRangeFor(t time.Time) (from, to []byte) {
 }
 
 // ActiveDate returns the currently-active Date in the schedule.
-func ActiveDate(g *Group, t time.Time) *Date {
+func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 	var d Date
 	var err error
 
 	from, to := DateRangeFor(t)
 
 	err = db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(g.Key()).Bucket(DatesBucket).Cursor()
+		c := tx.Bucket(g.Key()).Bucket(datesBucket).Cursor()
 		for k, v := c.Seek(from); k != nil && bytes.Compare(k, to) <= 0; k, v = c.Next() {
 			err = decodeDate(v, &d)
 			if d.Group != g.ID {
@@ -73,13 +71,13 @@ func (d *Date) Key() []byte {
 }
 
 // Save stores the Date in the database
-func (d *Date) Save() error {
+func (d *Date) Save(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
 		if err != nil {
 			return err
 		}
-		b, err = b.CreateBucketIfNotExists(DatesBucket)
+		b, err = b.CreateBucketIfNotExists(datesBucket)
 		if err != nil {
 			return err
 		}
@@ -142,11 +140,6 @@ func (e *DateExternal) ToDate() (*Date, error) {
 	ret.Group = e.Group
 	if ret.Group == "" {
 		return nil, fmt.Errorf("Group is mandatory")
-	}
-
-	_, err := getGroup(ret.Group)
-	if err != nil {
-		return nil, fmt.Errorf("Group does not exist: %s", err.Error())
 	}
 
 	// 1: Date (yyyy-mm-dddd)

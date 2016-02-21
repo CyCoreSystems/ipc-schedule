@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>ipc-schedule</title>
-    <meta name="description" content="">
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<title>ipc-schedule</title>
+	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/css/materialize.min.css">
 
 	<!--[if lt IE 9]>
 		<script src="//cdnjs.cloudflare.com/ajax/libs/es5-shim/4.0.5/es5-shim.min.js"></script>
@@ -15,32 +17,32 @@
 </head>
 <body>
 
-	<menu>
-
-	</menu>
+	<menu></menu>
 
 	<h3>ipc-schedule</h3>
-	<div id="app">
 
-	</div>
+	<div id="app"></div>
 
 	<script src="/tags/menu.tag" type="riot/tag"></script>
 	<script src="/tags/index.tag" type="riot/tag"></script>
 	<script src="/tags/usage.tag" type="riot/tag"></script>
 	<script src="/tags/upload.tag" type="riot/tag"></script>
+	<script src="/tags/group.tag" type="riot/tag"></script>
 	
 	<script src="/scripts/riot+compiler.min.js" type="text/javascript"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/js/materialize.min.js"></script>
+
 	<script>
 		riot.mount("menu")
 
 		riot.route("/", function() {
-			riot.mount(document.getElementById("app"), "index")
+			riot.mount("#app", "index")
 		})
 		riot.route("/usage", function() {
-			riot.mount(document.getElementById("app"), "usage")
+			riot.mount("#app", "usage")
 		})
 		riot.route("/upload", function() {
-			riot.mount(document.getElementById("app"), "upload")
+			riot.mount("#app", "upload")
 		})
 
 		riot.route.start()

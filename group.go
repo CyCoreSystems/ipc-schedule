@@ -2,7 +2,8 @@ package main
 
 import (
 	"bytes"
-	"encoding/gob"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -22,15 +23,40 @@ func (g *Group) Key() []byte {
 	return []byte(g.ID)
 }
 
-func getGroup(id string) (g Group, err error) {
+// allGroups returns the list of all groups
+func allGroups(db *bolt.DB) (list []*Group, err error) {
+	list = []*Group{}
 	db.View(func(tx *bolt.Tx) error {
-		return decodeGroup(tx.Bucket(groupBucket).Get([]byte(id)), &g)
+		c := tx.Bucket(groupBucket).Cursor()
+		if c == nil {
+			return fmt.Errorf("No groups found")
+		}
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var g Group
+			err = decodeGroup(v, &g)
+			if err != nil {
+				return err
+			}
+			list = append(list, &g)
+		}
+		return nil
 	})
 	return
-
 }
 
-func saveGroup(g Group) error {
+func getGroup(db *bolt.DB, id string) (*Group, error) {
+	var g Group
+	err := db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(groupBucket).Get([]byte(id))
+		if len(data) == 0 {
+			return ErrNotFound
+		}
+		return decodeGroup(data, &g)
+	})
+	return &g, err
+}
+
+func saveGroup(db *bolt.DB, g Group) error {
 	b := encodeGroup(&g)
 	return db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(groupBucket).Put(g.Key(), b)
@@ -39,10 +65,11 @@ func saveGroup(g Group) error {
 
 func encodeGroup(g *Group) []byte {
 	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(g)
+	json.NewEncoder(&buf).Encode(g)
 	return buf.Bytes()
 }
 
 func decodeGroup(data []byte, g *Group) error {
-	return gob.NewDecoder(bytes.NewReader(data)).Decode(g)
+	// FIXME: gob encoding isn't working here, for some reason
+	return json.NewDecoder(bytes.NewReader(data)).Decode(g)
 }

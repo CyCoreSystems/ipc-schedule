@@ -20,13 +20,15 @@ var MaxDayKey = []byte("6:1440")
 // BoltDB
 var DaysBucket = []byte("days")
 
-// Day represents a template schedule for a day of the week
+// Day represents a template schedule for a day of the week.
+// Days are stored in _local_ time, for the associated group.
 type Day struct {
-	Group    string         // The group identifier
-	Target   string         // The target number
-	Day      time.Weekday   // Day or date
-	Start    time.Duration  // Time from 00:00
-	Duration time.Duration  // Length of shift
+	Group    string        // The group identifier
+	Target   string        // The target number
+	Day      time.Weekday  // Day or date
+	Start    time.Duration // Time from 00:00
+	Duration time.Duration // Length of shift
+
 	Location *time.Location // Location for this schedule
 }
 
@@ -47,7 +49,7 @@ func DayRangeFor(t time.Time) (from, to []byte) {
 
 // ActiveDay returns the currently-active Day in the
 // schedule.
-func ActiveDay(g *Group, t time.Time) *Day {
+func ActiveDay(db *bolt.DB, g *Group, t time.Time) *Day {
 	var err error
 	var d Day
 
@@ -156,7 +158,7 @@ func (d *Day) Times(now time.Time) (closestStart time.Time, closestStop time.Tim
 }
 
 // Save stores the Day in the database
-func (d *Day) Save() error {
+func (d *Day) Save(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
 		if err != nil {
@@ -202,11 +204,11 @@ func (d *Day) ActiveAt(t time.Time) bool {
 	return t.After(start) && t.Before(stop)
 }
 
-// NewDayFromCSV takes a slice of strings (from a CSV), and
+// NewDayFromCSVRow takes a slice of strings (from a CSV), and
 // parses them into a Unit.
 // Format:
 //  `groupId, dayOfWeek, startTime, stopTime, cell/target`
-func NewDayFromCSV(d []string) (*Day, error) {
+func NewDayFromCSVRow(d []string) (*Day, error) {
 	if len(d) != 5 {
 		return nil, fmt.Errorf("CSV not in Group,Day,Time,Cell format")
 	}
@@ -218,6 +220,7 @@ func NewDayFromCSV(d []string) (*Day, error) {
 		Stop:   d[3],
 		Target: d[4],
 	}
+
 	return e.ToDay()
 }
 
@@ -237,15 +240,6 @@ func (e *DayExternal) ToDay() (*Day, error) {
 	var ret Day
 	// 0: group
 	ret.Group = e.Group
-	if ret.Group == "" {
-		return nil, fmt.Errorf("Group is mandatory")
-	}
-	g, err := getGroup(ret.Group)
-	if err != nil {
-		return nil, fmt.Errorf("Group does not exist: %s", err.Error())
-	}
-	// Store the group's location information to this schedule
-	ret.Location = g.Location
 
 	// 1: Day of week
 	dow, err := parseDay(e.Day)
