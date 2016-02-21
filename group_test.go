@@ -18,14 +18,16 @@ func TestGroupCodec(t *testing.T) {
 		}
 
 		Convey("Encoding it should render a non-zero-length byte slice", func() {
-			data := encodeGroup(&tg)
+			data, err := encodeGroup(&tg)
 			So(len(data), ShouldNotEqual, 0)
+			So(err, ShouldBeNil)
 
 			Convey("Decoding that data should return the original group", func() {
 				var g2 Group
 				err := decodeGroup(data, &g2)
 				So(err, ShouldBeNil)
 				So(g2.ID, ShouldEqual, tg.ID)
+				So(g2.Location.String(), ShouldEqual, loc.String())
 			})
 		})
 	})
