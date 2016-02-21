@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/gob"
 	"fmt"
 	"time"
 
@@ -73,11 +73,10 @@ func saveGroup(db *bolt.DB, g Group) error {
 
 func encodeGroup(g *Group) ([]byte, error) {
 	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(g)
+	err := gob.NewEncoder(&buf).Encode(g)
 	return buf.Bytes(), err
 }
 
 func decodeGroup(data []byte, g *Group) error {
-	// FIXME: gob encoding isn't working here, for some reason
-	return json.NewDecoder(bytes.NewReader(data)).Decode(g)
+	return gob.NewDecoder(bytes.NewReader(data)).Decode(g)
 }
