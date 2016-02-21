@@ -81,8 +81,11 @@ func (d *Date) Save(db *bolt.DB) error {
 		if err != nil {
 			return err
 		}
-
-		return b.Put(d.Key(), encodeDate(d))
+		data, err := encodeDate(d)
+		if err != nil {
+			return err
+		}
+		return b.Put(d.Key(), data)
 	})
 }
 
@@ -180,10 +183,10 @@ func (e *DateExternal) ToDate() (*Date, error) {
 
 }
 
-func encodeDate(d *Date) []byte {
+func encodeDate(d *Date) ([]byte, error) {
 	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(d)
-	return buf.Bytes()
+	err := gob.NewEncoder(&buf).Encode(d)
+	return buf.Bytes(), err
 }
 
 func decodeDate(data []byte, d *Date) error {

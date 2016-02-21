@@ -168,7 +168,11 @@ func (d *Day) Save(db *bolt.DB) error {
 		if err != nil {
 			return err
 		}
-		return b.Put(d.Key(), encodeDay(d))
+		data, err := encodeDay(d)
+		if err != nil {
+			return err
+		}
+		return b.Put(d.Key(), data)
 	})
 }
 
@@ -276,10 +280,10 @@ func (e *DayExternal) ToDay() (*Day, error) {
 	return &ret, nil
 }
 
-func encodeDay(d *Day) []byte {
+func encodeDay(d *Day) ([]byte, error) {
 	var buf bytes.Buffer
-	gob.NewEncoder(&buf).Encode(d)
-	return buf.Bytes()
+	err := gob.NewEncoder(&buf).Encode(d)
+	return buf.Bytes(), err
 }
 
 func decodeDay(data []byte, d *Day) error {
