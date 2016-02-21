@@ -29,7 +29,12 @@ type Day struct {
 	Start    time.Duration // Time from 00:00
 	Duration time.Duration // Length of shift
 
-	Location *time.Location // Location for this schedule
+	Location string // Location for this schedule
+}
+
+// GetLocation gets the location attached to the day
+func (d *Day) GetLocation() (*time.Location, error) {
+	return time.LoadLocation(d.Location)
 }
 
 // TimeToDayKey returns the BoltDB "day" bucket key for the current time
@@ -57,8 +62,13 @@ func ActiveDay(db *bolt.DB, g *Group, t time.Time) *Day {
 		return nil
 	}
 
+	loc, err := g.GetLocation()
+	if err != nil {
+		return nil
+	}
+
 	// Day schedules are stored in local time, so convert
-	from, to := DayRangeFor(t.In(g.Location))
+	from, to := DayRangeFor(t.In(loc))
 
 	// generate the match func
 	matchFunc := func(a, b []byte) func(tx *bolt.Tx) error {
@@ -127,8 +137,8 @@ func (d *Day) Times(now time.Time) (closestStart time.Time, closestStop time.Tim
 		return
 	}
 
-	if d.Location != nil {
-		now = now.In(d.Location)
+	if loc, err := d.GetLocation(); loc != nil && err == nil {
+		now = now.In(loc)
 	}
 
 	// find nearest start time of this slot
@@ -201,8 +211,8 @@ func todayAt(t time.Time, diff time.Duration) time.Time {
 // ActiveAt says whether the given time is
 // wihtin the schedule of this Day schedule.
 func (d *Day) ActiveAt(t time.Time) bool {
-	if d.Location != nil {
-		t = t.In(d.Location)
+	if loc, err := d.GetLocation(); loc != nil && err == nil {
+		t = t.In(loc)
 	}
 	start, stop := d.Times(t)
 	return t.After(start) && t.Before(stop)

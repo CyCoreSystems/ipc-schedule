@@ -14,7 +14,7 @@ func TestGroupCodec(t *testing.T) {
 		tg := Group{
 			ID:       "testGroupID",
 			Name:     "testGroup",
-			Location: loc,
+			Location: loc.String(),
 		}
 
 		Convey("Encoding it should render a non-zero-length byte slice", func() {
@@ -27,7 +27,7 @@ func TestGroupCodec(t *testing.T) {
 				err := decodeGroup(data, &g2)
 				So(err, ShouldBeNil)
 				So(g2.ID, ShouldEqual, tg.ID)
-				So(g2.Location.String(), ShouldEqual, loc.String())
+				So(g2.Location, ShouldEqual, loc.String())
 			})
 		})
 	})
@@ -54,7 +54,7 @@ func TestGroups(t *testing.T) {
 			tg := Group{
 				ID:       "testGroupID",
 				Name:     "testGroup",
-				Location: loc,
+				Location: loc.String(),
 			}
 			err := saveGroup(db, tg)
 			So(err, ShouldBeNil)
@@ -62,6 +62,7 @@ func TestGroups(t *testing.T) {
 				g, err := getGroup(db, tg.ID)
 				So(err, ShouldBeNil)
 				So(g.Name, ShouldEqual, tg.Name)
+				So(g.Location, ShouldEqual, loc.String())
 			})
 			Convey("allGroups should return a list with a single group", func() {
 				list, err := allGroups(db)

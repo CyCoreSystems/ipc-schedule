@@ -130,7 +130,7 @@ func TestDayTimes(t *testing.T) {
 			Day:      time.Monday,
 			Start:    2 * time.Hour, // 02:00
 			Duration: 4 * time.Hour, // until 06:00
-			Location: loc,
+			Location: loc.String(),
 		}
 
 		Convey("When times are derived for the Zero time", func() {
@@ -163,7 +163,7 @@ func TestDayActiveAt(t *testing.T) {
 			Day:      time.Monday,
 			Start:    2 * time.Hour, // 02:00
 			Duration: 4 * time.Hour, // until 06:00
-			Location: loc,
+			Location: loc.String(),
 		}
 
 		Convey("When the test time is 03:00 on a Monday", func() {
@@ -202,7 +202,7 @@ func TestDayToExternal(t *testing.T) {
 			Day:      time.Monday,
 			Start:    2 * time.Hour, // 02:00
 			Duration: 4 * time.Hour, // until 06:00
-			Location: loc,
+			Location: loc.String(),
 		}
 
 		Convey("When the day is exported", func() {
