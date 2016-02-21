@@ -57,16 +57,19 @@ func getGroup(db *bolt.DB, id string) (*Group, error) {
 }
 
 func saveGroup(db *bolt.DB, g Group) error {
-	b := encodeGroup(&g)
+	b, err := encodeGroup(&g)
+	if err != nil {
+		return err
+	}
 	return db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(groupBucket).Put(g.Key(), b)
 	})
 }
 
-func encodeGroup(g *Group) []byte {
+func encodeGroup(g *Group) ([]byte, error) {
 	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(g)
-	return buf.Bytes()
+	err := json.NewEncoder(&buf).Encode(g)
+	return buf.Bytes(), err
 }
 
 func decodeGroup(data []byte, g *Group) error {
