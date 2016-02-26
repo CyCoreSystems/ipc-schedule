@@ -13,9 +13,9 @@ var groupBucket = []byte("groups")
 
 // Group describes a group's parameters
 type Group struct {
-	ID       string // group identifier
-	Name     string // group name
-	Location string // Location / timezone
+	ID       string `json:"id"`       // group identifier
+	Name     string `json:"name"`     // group name
+	Location string `json:"timezone"` // Location / timezone
 }
 
 // Key returns the BoltDB keyname for the group
@@ -61,13 +61,23 @@ func getGroup(db *bolt.DB, id string) (*Group, error) {
 	return &g, err
 }
 
-func saveGroup(db *bolt.DB, g Group) error {
-	b, err := encodeGroup(&g)
+func saveGroup(db *bolt.DB, g *Group) error {
+	b, err := encodeGroup(g)
 	if err != nil {
 		return err
 	}
 	return db.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(groupBucket).Put(g.Key(), b)
+	})
+}
+
+func deleteGroup(db *bolt.DB, id string) error {
+	if id == "" {
+		return fmt.Errorf("Cannot delete nothing")
+	}
+	g := &Group{ID: id}
+	return db.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(groupBucket).Delete(g.Key())
 	})
 }
 

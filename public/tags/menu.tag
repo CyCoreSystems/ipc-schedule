@@ -3,15 +3,24 @@
       <nav>
          <div class="nav-wrapper">
             <ul class="left">
-               <li each={ options } class={ active: url }><a href={"#"+url}>{ label }</a></li>
+               <li each={ options } class={ active: parent.current === url }><a href={"#"+url}>{ label } </a></li>
             </ul>
          </div>
       </nav>
    </div>
 
-   riot.route(function(url) {
+   var self = this
+   self.current = false
+
+   this.on('mount', function() {
+      self.current = location.hash
+      self.update()
+   })
+
+   riot.route.create()(function(url) {
       console.log("New route is",url)
-      this.current = url
+      self.current = url
+      self.update()
    })
 
    this.options = [
@@ -20,10 +29,5 @@
       { label: 'Upload', url: 'upload' },
       { label: 'API', url: 'usage' },
    ]
-
-   isActive() {
-      console.log("current",this.parent.current, "compare", this.url)
-      return this.parent.current == this.url
-   }
 
 </menu>

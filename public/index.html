@@ -7,6 +7,7 @@
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/css/materialize.min.css">
 
 	<!--[if lt IE 9]>
@@ -23,20 +24,38 @@
 
 	<div id="app"></div>
 
+	<!-- Local App -->
 	<script src="/tags/menu.tag" type="riot/tag"></script>
 	<script src="/tags/index.tag" type="riot/tag"></script>
 	<script src="/tags/usage.tag" type="riot/tag"></script>
 	<script src="/tags/upload.tag" type="riot/tag"></script>
 	<script src="/tags/group.tag" type="riot/tag"></script>
+	<script src="/tags/groups.tag" type="riot/tag"></script>
 	
+	<!-- RiotJS -->
 	<script src="/scripts/riot+compiler.min.js" type="text/javascript"></script>
+
+	<!-- materialize CSS framework -->
+	<script src="https://code.jquery.com/jquery-2.2.1.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/js/materialize.min.js"></script>
 
+	<!-- launch app -->
 	<script>
 		riot.mount("menu")
 
+		riot.route(function(name) {
+			console.log("New route",name)
+		})
+
 		riot.route("/", function() {
 			riot.mount("#app", "index")
+		})
+		riot.route("/group/*", function(id) {
+			console.log("Got group path",id)
+			riot.mount("#app", "group", { groupId: id })
+		})
+		riot.route("/groups", function() {
+			riot.mount("#app", "groups")
 		})
 		riot.route("/usage", function() {
 			riot.mount("#app", "usage")

@@ -9,6 +9,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/russross/blackfriday"
+	"github.com/satori/go.uuid"
 	"gopkg.in/inconshreveable/log15.v2"
 )
 
@@ -55,7 +56,9 @@ func main() {
 
 	e.Get("/target/:id", getTarget)
 	e.Get("/groups", getGroups)
-	//e.Post("/group", addGroup)
+	e.Post("/group", postGroup)
+	e.Get("/group/:id", getGroupHandler)
+	e.Delete("/group/:id", deleteGroupHandler)
 	//e.Put("/group/:id", editGroup)
 
 	// Import endpoints
@@ -175,4 +178,27 @@ func getGroups(ctx *echo.Context) error {
 		return err
 	}
 	return ctx.JSON(200, list)
+}
+
+func postGroup(ctx *echo.Context) error {
+	g := Group{
+		ID:       ctx.Form("id"),
+		Name:     ctx.Form("name"),
+		Location: ctx.Form("timezone"),
+	}
+	if g.ID == "" {
+		g.ID = uuid.NewV1().String()
+	}
+	return saveGroup(dbFromContext(ctx), &g)
+}
+
+func getGroupHandler(ctx *echo.Context) error {
+	g, err := getGroup(dbFromContext(ctx), ctx.Param("id"))
+	if err != nil {
+		return err
+	}
+	return ctx.JSON(200, g)
+}
+func deleteGroupHandler(ctx *echo.Context) error {
+	return deleteGroup(dbFromContext(ctx), ctx.Param("id"))
 }

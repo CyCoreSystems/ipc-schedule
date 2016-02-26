@@ -1,24 +1,40 @@
-
 <index>
-	<h4>Schedule<h4>
-         <label for="group">Group</label>
-         <select name="group" each={ groups }>
-            <option id={id} selected={parent.currentGroup}>{name}</option>
-         </select>
-         <i class="fa fa-plus" onClick={ addGroup }></i>
-         <add-group></add-group>
+   <h4>Schedule</h4>
 
-
-   this.groups = {}
+   <div class="container">
+      <table>
+         <thead>
+            <tr>
+               <th>Group</th>
+               <th>Target</th>
+            </tr>
+         </thead>
+         <tbody>
+            <tr each={ opts.groups }>
+               <td>{ name }</td>
+               <td>{ getTarget(id) }</td>
+            </tr>
+         </tbody>
+      </table>
+   </div>
+   
+   opts.groups = []
 
    // Fetch the list of groups
    fetch('/groups')
    .then(function(resp) {
       if(resp.status != 200) {
-         return console.log("Failed to fetch groups",resp);
+         return console.log("Failed to fetch groups",resp)
       }
-      this.groups = JSON.parse(resp.blob());
+      return resp.json()
+   })
+   .then(function(json) {
+      console.log("response:",json)
+      opts.groups = json
+      riot.update()
    })
 
+   getTarget(id) {
+   }
 </index>
 	
