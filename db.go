@@ -29,10 +29,10 @@ func dbOpen(f string) (handle *bolt.DB, err error) {
 		if _, err = tx.CreateBucketIfNotExists(groupBucket); err != nil {
 			return err
 		}
-		if _, err = tx.CreateBucketIfNotExists([]byte("days")); err != nil {
+		if _, err = tx.CreateBucketIfNotExists(daysBucket); err != nil {
 			return err
 		}
-		if _, err = tx.CreateBucketIfNotExists([]byte("dates")); err != nil {
+		if _, err = tx.CreateBucketIfNotExists(datesBucket); err != nil {
 			return err
 		}
 		return nil

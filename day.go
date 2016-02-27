@@ -16,9 +16,9 @@ var MinDayKey = []byte("0:0000")
 // MaxDayKey is the BoldDB key of the maximum day
 var MaxDayKey = []byte("6:1440")
 
-// DaysBucket is the name of the Days bucket in
+// daysBucket is the name of the Days bucket in
 // BoltDB
-var DaysBucket = []byte("days")
+var daysBucket = []byte("days")
 
 // Day represents a template schedule for a day of the week.
 // Days are stored in _local_ time, for the associated group.
@@ -71,10 +71,18 @@ func ActiveDay(db *bolt.DB, g *Group, t time.Time) *Day {
 	from, to := DayRangeFor(t.In(loc))
 
 	// generate the match func
-	matchFunc := func(a, b []byte) func(tx *bolt.Tx) error {
+	matchFunc := func(a, z []byte) func(tx *bolt.Tx) error {
 		return func(tx *bolt.Tx) error {
-			c := tx.Bucket(g.Key()).Bucket(DaysBucket).Cursor()
-			for k, v := c.Seek(a); k != nil && bytes.Compare(k, b) <= 0; k, v = c.Next() {
+			b, err := tx.CreateBucketIfNotExists(g.Key())
+			if err != nil {
+				return err
+			}
+			b, err = b.CreateBucketIfNotExists(daysBucket)
+			if err != nil {
+				return err
+			}
+			c := b.Cursor()
+			for k, v := c.Seek(a); k != nil && bytes.Compare(k, z) <= 0; k, v = c.Next() {
 				err = decodeDay(v, &d)
 				if d.Group != g.ID {
 					continue
@@ -174,7 +182,7 @@ func (d *Day) Save(db *bolt.DB) error {
 		if err != nil {
 			return err
 		}
-		b, err = b.CreateBucketIfNotExists(DaysBucket)
+		b, err = b.CreateBucketIfNotExists(daysBucket)
 		if err != nil {
 			return err
 		}

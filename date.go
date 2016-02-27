@@ -42,7 +42,15 @@ func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 	from, to := DateRangeFor(t)
 
 	err = db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket(g.Key()).Bucket(datesBucket).Cursor()
+		b, err := tx.CreateBucketIfNotExists(g.Key())
+		if err != nil {
+			return err
+		}
+		b, err = tx.CreateBucketIfNotExists(datesBucket)
+		if err != nil {
+			return err
+		}
+		c := b.Cursor()
 		for k, v := c.Seek(from); k != nil && bytes.Compare(k, to) <= 0; k, v = c.Next() {
 			err = decodeDate(v, &d)
 			if d.Group != g.ID {

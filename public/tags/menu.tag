@@ -4,6 +4,7 @@
          <div class="nav-wrapper">
             <ul class="left">
                <li each={ options } class={ active: parent.current === url }><a href={"#"+url}>{ label } </a></li>
+               <li><span class="brand">ipc-schedule</span></li>
             </ul>
          </div>
       </nav>
@@ -29,5 +30,4 @@
       { label: 'Upload', url: 'upload' },
       { label: 'API', url: 'usage' },
    ]
-
 </menu>

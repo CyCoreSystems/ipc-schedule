@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/csv"
 	"io"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/labstack/echo"
@@ -162,14 +163,23 @@ func getSchedule(ctx *echo.Context) error {
 
 // getTarget returns the target for the present time
 func getTarget(ctx *echo.Context) error {
-	_, err := getGroup(dbFromContext(ctx), ctx.Param("id"))
+	g, err := getGroup(dbFromContext(ctx), ctx.Param("id"))
 	if err != nil {
 		return err
 	}
 
 	// See if we have an explicit date entry
+	d := ActiveDate(dbFromContext(ctx), g, time.Now())
+	if d != nil {
+		return ctx.String(200, d.Target)
+	}
 
-	return nil
+	// Otherwise, use the day schedule
+	d2 := ActiveDay(dbFromContext(ctx), g, time.Now())
+	if d2 != nil {
+		return ctx.String(200, d2.Target)
+	}
+	return ctx.String(404, "Not found")
 }
 
 func getGroups(ctx *echo.Context) error {
