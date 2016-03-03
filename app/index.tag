@@ -40,13 +40,13 @@
       })
    })
 
-   updateTargets() {
+   this.updateTargets = () => {
       opts.groups.forEach(function(g) {
          self.updateTarget(g)
       })
    }
 
-   updateTarget(g) {
+   this.updateTarget = (g) => {
       fetch('/target/'+g.id)
       .then(function(resp) {
          if(resp.status != 200) {
@@ -64,7 +64,7 @@
       })
    }
 
-   getTarget() {
+   this.getTarget = () => {
       t = _.find(opts.targets,{id: item.id})
       return typeof t !== undefined ? t.target : ''
    }

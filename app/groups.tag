@@ -24,11 +24,11 @@
 
    </div>
 
-   add() {
+   this.add = () => {
       riot.route('/group/new')
    }
 
-   remove() {
+   this.remove = () => {
       reload = this.get
       
       fetch('/group/'+opts.group.id,{
@@ -41,7 +41,7 @@
       })
    }
 
-   get() {
+   this.get = () => {
       // Fetch the list of groups
       fetch('/groups')
       .then(function(resp) {

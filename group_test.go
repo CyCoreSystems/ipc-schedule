@@ -56,7 +56,7 @@ func TestGroups(t *testing.T) {
 				Name:     "testGroup",
 				Location: loc.String(),
 			}
-			err := saveGroup(db, tg)
+			err := saveGroup(db, &tg)
 			So(err, ShouldBeNil)
 			Convey("Getting that group should succeed", func() {
 				g, err := getGroup(db, tg.ID)

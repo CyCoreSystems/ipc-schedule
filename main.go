@@ -1,15 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"encoding/csv"
+	"flag"
 	"io"
+	"net/http"
 	"time"
 
+	"github.com/GeertJohan/go.rice"
 	"github.com/boltdb/bolt"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/russross/blackfriday"
 	"github.com/satori/go.uuid"
 	"gopkg.in/inconshreveable/log15.v2"
 )
@@ -17,8 +18,15 @@ import (
 var dbFile = "/var/db/ringfree/ipc.db"
 var db *bolt.DB
 
+// addr is the listen address
+var addr string
+
 // Log is the top-level logger
 var Log log15.Logger
+
+func init() {
+	flag.StringVar(&addr, "addr", ":9000", "Address binding")
+}
 
 func main() {
 	// Create a logger
@@ -46,12 +54,23 @@ func main() {
 	// Attach handlers
 
 	// Static content
+	assetHandler := http.FileServer(rice.MustFindBox("public").HTTPBox())
+	e.Get("/", func(c *echo.Context) error {
+		assetHandler.ServeHTTP(c.Response().Writer(), c.Request())
+		return nil
+	})
 
-	e.Index("public/index.html")
-	e.Favicon("public/favicon.ico")
+	e.Get("/app/*", func(c *echo.Context) error {
+		http.StripPrefix("/app/", assetHandler).
+			ServeHTTP(c.Response().Writer(), c.Request())
+		return nil
+	})
 
-	e.Static("/tags", "public/tags")
-	e.Static("/scripts", "public/scripts")
+	//e.Index("public/index.html")
+	//e.Favicon("public/favicon.ico")
+
+	//e.Static("/tags", "public/tags")
+	//e.Static("/scripts", "public/scripts")
 
 	// Data endpoints
 
@@ -68,14 +87,6 @@ func main() {
 	e.Post("/sched/import/dates", fileHandler(importDates))
 
 	e.Run(":8080")
-}
-
-func instructions(ctx *echo.Context) error {
-	instr, err := Asset("data/instructions.md")
-	if err != nil {
-		return err
-	}
-	return ctx.HTML(200, bytes.NewBuffer(blackfriday.MarkdownCommon(instr)).String())
 }
 
 func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.Context) error {

@@ -51,11 +51,11 @@
 
    })
 
-   selected(val) {
+   this.selected = (val) => {
       return opts.item.timezone == val
    }
 
-   save() {
+   this.save = () => {
       fetch('/group',{
          method: 'post',
          body: new FormData(this.groupEdit)
@@ -73,7 +73,7 @@
       })
    }
 
-   cancel() {
+   this.cancel = () => {
       parent.editing = false
       return riot.route('/groups')
    }

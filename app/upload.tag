@@ -18,7 +18,7 @@
 	<script>
 		var self = this;
 		self.status = "";
-		uploadDay(e) {
+      this.uploadDay = (e) => {
 			var form = document.getElementById("dayCsv")
 			window.fetch("/sched/import/days", {
 				method: "post",
@@ -30,7 +30,7 @@
 			return false;
 		}
 
-		uploadDate(e) {
+      this.uploadDate = (e) => {
 			var form = document.getElementById("dateCsv")
 			window.fetch("/sched/import/dates", {
 				method: "post",

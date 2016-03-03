@@ -7,5 +7,5 @@ build:
 	go build
 
 assets:
-	go-bindata data/
+	rice embed-go
 
