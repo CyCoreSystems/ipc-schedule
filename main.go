@@ -1,5 +1,7 @@
 package main
 
+//go:generate esc -o static.go -prefix public -ignore \.map$ public
+
 import (
 	"encoding/csv"
 	"flag"
@@ -10,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/GeertJohan/go.rice"
 	"github.com/boltdb/bolt"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -24,9 +25,8 @@ var db *bolt.DB
 // addr is the listen address
 var addr string
 
-// debug is the debug flag.  Among other things,
-// it tells `rice` to not use the bundled binary
-// data, but to use the source files instead.
+// debug enables debug mode, which uses local files
+// instead of bundled ones
 var debug bool
 
 // Log is the top-level logger
@@ -34,7 +34,7 @@ var Log log15.Logger
 
 func init() {
 	flag.StringVar(&addr, "addr", ":9000", "Address binding")
-	flag.BoolVar(&debug, "debug", false, "Debug mode")
+	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
 }
 
 func main() {
@@ -42,14 +42,6 @@ func main() {
 
 	// Create a logger
 	Log = log15.New()
-
-	riceConfig := rice.Config{
-		LocateOrder: []rice.LocateMethod{rice.LocateEmbedded, rice.LocateAppended},
-	}
-	if debug {
-		Log.Info("Enabling debug mode")
-		riceConfig.LocateOrder = []rice.LocateMethod{rice.LocateWorkingDirectory, rice.LocateFS}
-	}
 
 	// Open the database
 	db, err := dbOpen(dbFile)
@@ -73,12 +65,7 @@ func main() {
 	// Attach handlers
 
 	// Static content
-	riceBox, err := riceConfig.FindBox("public")
-	if err != nil {
-		Log.Crit("Failed to open assets", "error", err)
-		return
-	}
-	assetHandler := http.FileServer(riceBox.HTTPBox())
+	assetHandler := http.FileServer(FS(debug))
 
 	// Handle the index
 	e.Get("/", func(c *echo.Context) error {
@@ -87,7 +74,7 @@ func main() {
 	})
 
 	e.Get("/app/*", func(c *echo.Context) error {
-		http.StripPrefix("/app/", assetHandler).
+		http.StripPrefix("/app", assetHandler).
 			ServeHTTP(c.Response().Writer(), c.Request())
 		return nil
 	})
@@ -122,7 +109,7 @@ func main() {
 	}()
 
 	// Listen for connections
-	e.Run(":8080")
+	e.Run(addr)
 }
 
 func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.Context) error {
@@ -160,18 +147,24 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 	for rec, err := r.Read(); err == nil; rec, err = r.Read() {
 		date, err := NewDateFromCSV(rec)
 		if err != nil {
+			Log.Error("Failed to parse Date", "error", err)
 			if count > 0 {
+				Log.Error("No Dates added successfully")
 				return err
 			}
 			continue // assume first row is header and skip
 		}
+		Log.Debug("Got Date row", "date", date)
 
 		if err := date.Save(dbFromContext(ctx)); err != nil {
+			Log.Error("Failed to save the date", "date", date)
 			return err
 		}
+		Log.Debug("Saved date", "date", date)
 		count++
 	}
 
+	Log.Debug("Finished Dates import", "count", count)
 	return nil
 }
 

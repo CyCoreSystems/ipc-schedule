@@ -1,7 +1,7 @@
 *.db
 *.sw?
 ipc-schedule
-/rice-box.go
+/static.go
 bundle.js
 bundle.js.map
 /node_modules

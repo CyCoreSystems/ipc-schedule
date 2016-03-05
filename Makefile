@@ -7,5 +7,5 @@ build:
 	go build
 
 assets:
-	rice embed-go
+	go generate
 
