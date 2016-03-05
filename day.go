@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -59,62 +58,38 @@ func ActiveDay(db *bolt.DB, g *Group, t time.Time) *Day {
 	var d Day
 
 	if g == nil {
+		Log.Error("No group supplied")
 		return nil
-	}
-
-	loc, err := g.GetLocation()
-	if err != nil {
-		return nil
-	}
-
-	// Day schedules are stored in local time, so convert
-	from, to := DayRangeFor(t.In(loc))
-
-	// generate the match func
-	matchFunc := func(a, z []byte) func(tx *bolt.Tx) error {
-		return func(tx *bolt.Tx) error {
-			b, err := tx.CreateBucketIfNotExists(g.Key())
-			if err != nil {
-				return err
-			}
-			b, err = b.CreateBucketIfNotExists(daysBucket)
-			if err != nil {
-				return err
-			}
-			c := b.Cursor()
-			for k, v := c.Seek(a); k != nil && bytes.Compare(k, z) <= 0; k, v = c.Next() {
-				err = decodeDay(v, &d)
-				if d.Group != g.ID {
-					continue
-				}
-				if err != nil {
-					fmt.Println("Failed to decode day", v, err)
-					continue
-				}
-				if d.ActiveAt(t) {
-					return nil
-				}
-			}
-			return fmt.Errorf("No active day found")
-		}
 	}
 
 	// Walk through the database until we find the first
 	// active Day
-
-	// If day of `from` is higher than day of `to`,
-	// we have to split our search into two pieces.
-	if sort.StringsAreSorted([]string{string(from[0]), string(to[0])}) {
-		err = db.View(matchFunc(from, to))
-	} else {
-		// Search start time to end of week
-		err = db.View(matchFunc(from, MaxDayKey))
-		if err != nil {
-			// Search start of week to end time
-			err = db.View(matchFunc(MinDayKey, to))
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(g.Key())
+		if b == nil {
+			return err
 		}
-	}
+		b = b.Bucket(daysBucket)
+		if b == nil {
+			return err
+		}
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			err = decodeDay(v, &d)
+			if err != nil {
+				fmt.Println("Failed to decode day", v, err)
+				continue
+			}
+
+			if d.ActiveAt(t) {
+				Log.Info("Day is active", "day", d)
+				return nil
+			}
+		}
+		return fmt.Errorf("No active day found")
+	})
 	if err != nil {
+		Log.Error("No match", "error", err)
 		return nil
 	}
 	return &d

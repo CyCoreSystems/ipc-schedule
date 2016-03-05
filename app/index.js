@@ -1,3 +1,5 @@
+var _ = require('lodash');
+
 // Top menu
 require('./menu.tag');
 riot.mount("menu")

@@ -1,4 +1,5 @@
 #!/bin/bash
 
-go run ./main.go -mode dev &
+go build
+./ipc-schedule -debug &
 ./node_modules/.bin/webpack-dev-server -d --inline --hot --port 3000 

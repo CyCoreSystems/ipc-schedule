@@ -5,6 +5,9 @@ import (
 	"flag"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/GeertJohan/go.rice"
@@ -21,16 +24,32 @@ var db *bolt.DB
 // addr is the listen address
 var addr string
 
+// debug is the debug flag.  Among other things,
+// it tells `rice` to not use the bundled binary
+// data, but to use the source files instead.
+var debug bool
+
 // Log is the top-level logger
 var Log log15.Logger
 
 func init() {
 	flag.StringVar(&addr, "addr", ":9000", "Address binding")
+	flag.BoolVar(&debug, "debug", false, "Debug mode")
 }
 
 func main() {
+	flag.Parse()
+
 	// Create a logger
 	Log = log15.New()
+
+	riceConfig := rice.Config{
+		LocateOrder: []rice.LocateMethod{rice.LocateEmbedded, rice.LocateAppended},
+	}
+	if debug {
+		Log.Info("Enabling debug mode")
+		riceConfig.LocateOrder = []rice.LocateMethod{rice.LocateWorkingDirectory, rice.LocateFS}
+	}
 
 	// Open the database
 	db, err := dbOpen(dbFile)
@@ -54,7 +73,14 @@ func main() {
 	// Attach handlers
 
 	// Static content
-	assetHandler := http.FileServer(rice.MustFindBox("public").HTTPBox())
+	riceBox, err := riceConfig.FindBox("public")
+	if err != nil {
+		Log.Crit("Failed to open assets", "error", err)
+		return
+	}
+	assetHandler := http.FileServer(riceBox.HTTPBox())
+
+	// Handle the index
 	e.Get("/", func(c *echo.Context) error {
 		assetHandler.ServeHTTP(c.Response().Writer(), c.Request())
 		return nil
@@ -86,6 +112,16 @@ func main() {
 	e.Post("/sched/import/days", fileHandler(importDays))
 	e.Post("/sched/import/dates", fileHandler(importDates))
 
+	// Listen to OS kill signals
+	go func() {
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+		<-sigs
+		Log.Info("Exiting on signal")
+		os.Exit(100)
+	}()
+
+	// Listen for connections
 	e.Run(":8080")
 }
 
@@ -121,7 +157,7 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
 	var count int
-	for rec, err := r.Read(); err == nil; count++ {
+	for rec, err := r.Read(); err == nil; rec, err = r.Read() {
 		date, err := NewDateFromCSV(rec)
 		if err != nil {
 			if count > 0 {
@@ -133,6 +169,7 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 		if err := date.Save(dbFromContext(ctx)); err != nil {
 			return err
 		}
+		count++
 	}
 
 	return nil
@@ -142,29 +179,37 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 	r := csv.NewReader(file)
 
 	var count int
-	for rec, err := r.Read(); err == nil; count++ {
+	for rec, err := r.Read(); err == nil; rec, err = r.Read() {
+		Log.Debug("Got Day row", "day", rec)
 		// Convert the row to a Day
 		day, err := NewDayFromCSVRow(rec)
 		if err != nil {
 			if count > 0 {
+				Log.Error("No Days added successfully")
 				return err
 			}
 			continue // assume first row is header and skip
 		}
 
 		// Add the location
-		g, err := getGroup(dbFromContext(ctx), ctx.Param("group"))
+		g, err := getGroup(dbFromContext(ctx), day.Group)
 		if err != nil {
+			Log.Error("Failed to load group", "group", day.Group)
 			return err
 		}
+		Log.Debug("Setting location", "location", g.Location)
 		day.Location = g.Location
 
 		// Save the Day
 		if err := day.Save(dbFromContext(ctx)); err != nil {
+			Log.Error("Failed to save the day", "day", day)
 			return err
 		}
+		count++
+		Log.Debug("Saved day", "day", day)
 	}
 
+	Log.Debug("Finished Days import", "count", count)
 	return nil
 }
 

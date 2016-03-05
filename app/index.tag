@@ -1,3 +1,5 @@
+var _ = require('lodash');
+
 <index>
    <h4>Schedule</h4>
 
@@ -12,7 +14,7 @@
          <tbody>
             <tr each={ opts.groups }>
                <td>{ name }</td>
-               <td>{ getTarget(id) }</td>
+               <td>{ target }</td>
             </tr>
          </tbody>
       </table>
@@ -47,26 +49,28 @@
    }
 
    this.updateTarget = (g) => {
+      console.log("Fetching target for group")
       fetch('/target/'+g.id)
       .then(function(resp) {
+         console.log("Got response",resp)
          if(resp.status != 200) {
-            return console.log("No schedule found for group ", g.id)
+            return console.log("No scheduled target found for group ", g.id)
          }
-         var i = _.findIndex(opts.targets, { id: g.id })
          resp.text().then(function(t) {
+            console.log("Parsed reponse as text",t)
+            g.target = t
+            var i = _.findIndex(opts.targets, { id: g.id })
             if(i<0) {
-               opts.targets.append({id: g.id, target: t})
+               opts.targets.push({id: g.id, target: t})
             } else {
                opts.targets[i].target = t
             }
-            self.update()
+            console.log("Targets array is now",opts.targets)
+            console.log("Groups array is now",opts.groups)
+            riot.update()
          })
       })
    }
 
-   this.getTarget = () => {
-      t = _.find(opts.targets,{id: item.id})
-      return typeof t !== undefined ? t.target : ''
-   }
 </index>
 	

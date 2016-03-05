@@ -42,22 +42,22 @@ func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 	from, to := DateRangeFor(t)
 
 	err = db.View(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists(g.Key())
-		if err != nil {
-			return err
+		b := tx.Bucket(g.Key())
+		if b == nil {
+			return fmt.Errorf("Group bucket not found")
 		}
-		b, err = tx.CreateBucketIfNotExists(datesBucket)
-		if err != nil {
-			return err
+		b = tx.Bucket(datesBucket)
+		if b == nil {
+			return fmt.Errorf("Dates bucket not found")
 		}
 		c := b.Cursor()
-		for k, v := c.Seek(from); k != nil && bytes.Compare(k, to) <= 0; k, v = c.Next() {
+		for k, v := c.First(); k != nil; k, v = c.Next() {
 			err = decodeDate(v, &d)
 			if d.Group != g.ID {
 				continue
 			}
 			if err != nil {
-				fmt.Println("Failed to decode date", v, err)
+				Log.Error("Failed to decode date", "raw", v, "error", err)
 				continue
 			}
 			if d.ActiveAt(t) {
@@ -68,6 +68,7 @@ func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 		return fmt.Errorf("No active date found")
 	})
 	if err != nil {
+		Log.Error("Not found", "error", err)
 		return nil
 	}
 	return &d
