@@ -19,7 +19,6 @@
    })
 
    riot.route.create()(function(url) {
-      console.log("New route is",url)
       self.current = url
       self.update()
    })

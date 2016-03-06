@@ -39,7 +39,6 @@
             if(resp.status == 200) {
                resp.json().then(function(data) {
                   opts.item = data
-                  console.log("Item:",opts.item)
                   riot.update()
                })
             }

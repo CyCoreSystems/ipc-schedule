@@ -35,7 +35,6 @@ var _ = require('lodash');
          return resp.json()
       })
       .then(function(json) {
-         console.log("response:",json)
          opts.groups = json
          self.updateTargets()
          riot.update()
@@ -49,15 +48,12 @@ var _ = require('lodash');
    }
 
    this.updateTarget = (g) => {
-      console.log("Fetching target for group")
       fetch('/target/'+g.id)
       .then(function(resp) {
-         console.log("Got response",resp)
          if(resp.status != 200) {
             return console.log("No scheduled target found for group ", g.id)
          }
          resp.text().then(function(t) {
-            console.log("Parsed reponse as text",t)
             g.target = t
             var i = _.findIndex(opts.targets, { id: g.id })
             if(i<0) {
@@ -65,8 +61,6 @@ var _ = require('lodash');
             } else {
                opts.targets[i].target = t
             }
-            console.log("Targets array is now",opts.targets)
-            console.log("Groups array is now",opts.groups)
             riot.update()
          })
       })

@@ -12,16 +12,11 @@ require('./group.tag');
 require('./groups.tag');
 	
 
-riot.route(function(name) {
-   console.log("New route",name)
-})
-
 // Routes
 riot.route("/", function() {
    riot.mount("#app", "index")
 })
 riot.route("/group/*", function(id) {
-   console.log("Got group path",id)
    riot.mount("#app", "group", { groupId: id })
 })
 riot.route("/groups", function() {

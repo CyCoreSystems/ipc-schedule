@@ -1,7 +1,6 @@
 
 <upload>
 
-	<div>{status}</div>
 
 	<h4>Upload Weekday ("Day") CSV</h4>
 	<form id="dayCsv" onsubmit={uploadDay} method="POST" enctype="multipart/form-data">
@@ -15,6 +14,11 @@
 		<button type="submit">Upload</button>
 	</form>
 
+   <div if={status}>
+      <h3>Upload result:</h3>
+      <p>{status}</p>
+   </div>
+
 	<script>
 		var self = this;
 		self.status = "";
@@ -24,7 +28,7 @@
 				method: "post",
 				body: new FormData(form),
 			}).then(function(resp) {
-				self.status = "Upload Results: " + resp.statusText;
+				self.status = resp.statusText;
 				self.update()
 			})
 			return false;
@@ -36,7 +40,7 @@
 				method: "post",
 				body: new FormData(form),
 			}).then(function(resp) {
-				self.status = "Upload Results: " + resp.statusText;
+				self.status = resp.statusText;
 				self.update()
 			})
 			return false;
