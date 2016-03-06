@@ -5,23 +5,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/boltdb/bolt"
 	. "github.com/smartystreets/goconvey/convey"
-	"gopkg.in/inconshreveable/log15.v2"
 )
 
-var loc *time.Location
+var dayDb *bolt.DB
 
 func init() {
 	var err error
-	loc, err = time.LoadLocation("US/Eastern")
-	if err != nil {
-		panic("Failed to load location")
-	}
-
-	Log = log15.New()
 
 	// Open a test database
-	db, err = dbOpen("./test.db")
+	dayDb, err = dbOpen("./test.db")
 	if err != nil {
 		panic("Failed to open test database")
 	}

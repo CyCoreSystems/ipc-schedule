@@ -39,23 +39,20 @@ func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 	var d Date
 	var err error
 
-	from, to := DateRangeFor(t)
-
 	err = db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket(g.Key())
 		if b == nil {
 			return fmt.Errorf("Group bucket not found")
 		}
-		b = tx.Bucket(datesBucket)
+		b = b.Bucket(datesBucket)
 		if b == nil {
 			return fmt.Errorf("Dates bucket not found")
 		}
 		c := b.Cursor()
+		Log.Debug("Checking dates for", "group", g.Name, "size", b.Stats().KeyN)
 		for k, v := c.First(); k != nil; k, v = c.Next() {
+			Log.Debug("Checking date", "group", g.Name)
 			err = decodeDate(v, &d)
-			if d.Group != g.ID {
-				continue
-			}
 			if err != nil {
 				Log.Error("Failed to decode date", "raw", v, "error", err)
 				continue
@@ -68,7 +65,7 @@ func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 		return fmt.Errorf("No active date found")
 	})
 	if err != nil {
-		Log.Error("Not found", "error", err)
+		Log.Info("Date target not found", "error", err, "group", g.Name)
 		return nil
 	}
 	return &d
@@ -112,14 +109,14 @@ func (d *Date) ToExternal() *DateExternal {
 // ActiveAt says whether the given time is
 // within the schedule of this Date schedule
 func (d *Date) ActiveAt(t time.Time) bool {
-	return t.After(d.Date) && t.Before(d.Date.Add(d.Time))
+	return t.After(d.Date.Add(-time.Second)) && t.Before(d.Date.Add(d.Time).Add(time.Second))
 }
 
 // NewDateFromCSV takes a slice of strings (from a CSV), and
 // parses them into a Unit.
 // Format:
 //	 `groupId`, `date`, `startTime`, `stopTime`, `cell/target`
-func NewDateFromCSV(d []string) (*Date, error) {
+func NewDateFromCSV(db *bolt.DB, d []string) (*Date, error) {
 	if len(d) != 5 {
 		return nil, fmt.Errorf("CSV not in Group,Date,Time,Cell format")
 	}
@@ -132,7 +129,7 @@ func NewDateFromCSV(d []string) (*Date, error) {
 		Target: d[4],
 	}
 
-	return e.ToDate()
+	return e.ToDate(db)
 }
 
 // DateExternal represents a Date schedule unit
@@ -146,17 +143,24 @@ type DateExternal struct {
 }
 
 // ToDate converts an exported date schedule to a proper Date schedule
-func (e *DateExternal) ToDate() (*Date, error) {
+func (e *DateExternal) ToDate(db *bolt.DB) (*Date, error) {
 	var ret Date
 	// 0: group
 	ret.Group = e.Group
 	if ret.Group == "" {
 		return nil, fmt.Errorf("Group is mandatory")
 	}
+	g, err := getGroup(db, e.Group)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to find group: %s", err.Error())
+	}
+	loc, err := g.GetLocation()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get group location: %s", err.Error())
+	}
 
 	// 1: Date (yyyy-mm-dddd)
-
-	date, err := parseDate(e.Date)
+	date, err := parseDate(e.Date, loc)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse date: %s", err.Error())
 	}

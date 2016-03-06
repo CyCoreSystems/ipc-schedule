@@ -145,7 +145,7 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 
 	var count int
 	for rec, err := r.Read(); err == nil; rec, err = r.Read() {
-		date, err := NewDateFromCSV(rec)
+		date, err := NewDateFromCSV(dbFromContext(ctx), rec)
 		if err != nil {
 			Log.Error("Failed to parse Date", "error", err)
 			if count > 0 {

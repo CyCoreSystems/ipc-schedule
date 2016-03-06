@@ -10,8 +10,8 @@ import (
 // various parse functions
 
 // Parse the provided YYYY-MM-DD date
-func parseDate(d string) (time.Time, error) {
-	return time.Parse("2006-01-02", d)
+func parseDate(d string, loc *time.Location) (time.Time, error) {
+	return time.ParseInLocation("2006-01-02", d, loc)
 }
 
 // Parse the provided day as a time.Weekday
