@@ -1,6 +1,9 @@
 *.db
 *.sw?
 ipc-schedule
+/ipc-schedule-*.zip
+/ipc-schedule-*.tar.gz
+/ipc-schedule-*.tar.bz2
 /static.go
 bundle.js
 bundle.js.map
