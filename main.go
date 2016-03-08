@@ -109,7 +109,7 @@ func main() {
 	}()
 
 	// Listen for connections
-	Log.Info("Listening on", addr)
+	Log.Info("Listening", "address", addr)
 	e.Run(addr)
 }
 
