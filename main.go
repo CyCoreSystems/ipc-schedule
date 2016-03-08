@@ -34,7 +34,7 @@ var Log log15.Logger
 
 func init() {
 	flag.StringVar(&addr, "addr", ":9000", "Address binding")
-	flag.BoolVar(&debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&debug, "debug", false, "Enable debug mode, which uses separate files for web development")
 }
 
 func main() {
@@ -109,6 +109,7 @@ func main() {
 	}()
 
 	// Listen for connections
+	Log.Info("Listening on", addr)
 	e.Run(addr)
 }
 
