@@ -51,7 +51,7 @@
          return resp.json()
       })
       .then(function(json) {
-         opts.groups = json
+         opts.groups = _.sortBy(json, 'name')
          riot.update()
       })
    }

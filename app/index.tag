@@ -35,7 +35,7 @@ var _ = require('lodash');
          return resp.json()
       })
       .then(function(json) {
-         opts.groups = json
+         opts.groups = _.sortBy(json,'name')
          self.updateTargets()
          riot.update()
       })
