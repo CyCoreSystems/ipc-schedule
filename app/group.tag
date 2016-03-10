@@ -3,19 +3,22 @@
    <div class="container">
       <form id="groupEdit" class="col s12">
          <div class="row s12">
-            <input name="id" type="hidden" value={ opts.item.id }/>
-            <div class="input-field col s5">
+            <div class="input-field col s2">
+               <input name="id" type="text" class="validate" required value={ opts.item.id } minlength=3 maxlength=6 length=6/>
+               <label for="id">Group ID</label>
+            </div>
+            <div class="input-field col s4">
                <input name="name" type="text" class="validate" required value={ opts.item.name } minlength=3 maxlength=25 length=25/>
                <label for="name">Group Name</label>
             </div>
-            <div class="input-field col s4">
+            <div class="input-field col s3">
                <select class="validate" required name="timezone">
                   <option value="" disabled selected={ selected('') }>Choose the timezone for the group</option>
                   <option each={ timezones } value={ value } selected={ selected(value) }>{ label }</option>
                </select>
                <label for="timezone">Time Zone</label>
             </div>
-            <div class="input-field col s3">
+            <div class="input-field col s2">
                <a class="btn-floating waves-effect waves-light green"><i class="material-icons" onclick={ save }>done</i></a>
                <a class="btn-floating waves-effect waves-light red"><i class="material-icons" onclick={ cancel }>cancel</i></a>
             </div>
