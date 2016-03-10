@@ -7,5 +7,6 @@ build:
 	go build
 
 assets:
+	webpack
 	go generate
 
