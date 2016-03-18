@@ -170,41 +170,57 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 }
 
 func importDays(ctx *echo.Context, file io.Reader) error {
-	r := csv.NewReader(file)
+	return dbFromContext(ctx).Update(func(tx *bolt.Tx) error {
+		r := csv.NewReader(file)
 
-	var count int
-	for rec, err := r.Read(); err == nil; rec, err = r.Read() {
-		Log.Debug("Got Day row", "day", rec)
-		// Convert the row to a Day
-		day, err := NewDayFromCSVRow(rec)
-		if err != nil {
-			if count > 0 {
-				Log.Error("No Days added successfully")
+		seenGroups := make(map[string]bool)
+
+		var count int
+		for rec, err := r.Read(); err == nil; rec, err = r.Read() {
+			Log.Debug("Got Day row", "day", rec)
+
+			// Convert the row to a Day
+			day, err := NewDayFromCSVRow(rec)
+			if err != nil {
+				if count > 0 {
+					Log.Error("No Days added successfully")
+					return err
+				}
+				continue // assume first row is header and skip
+			}
+
+			// Confirm group exists
+			g, err := getGroup(dbFromContext(ctx), day.Group)
+			if err != nil {
+				Log.Error("Failed to load group", "group", day.Group)
 				return err
 			}
-			continue // assume first row is header and skip
+
+			// if we haven't seen the group this upload, then clear the days
+			if _, ok := seenGroups[g.ID]; !ok {
+				g.ClearDays(tx)
+			}
+
+			seenGroups[g.ID] = true // mark group as seen
+
+			// Copy over location to day entity
+			Log.Debug("Setting location", "location", g.Location)
+			day.Location = g.Location
+
+			// Save the Day
+			if err := day.Save(tx); err != nil {
+				Log.Error("Failed to save the day", "day", day)
+				return err
+			}
+
+			count++
+			Log.Debug("Saved day", "day", day)
 		}
 
-		// Add the location
-		g, err := getGroup(dbFromContext(ctx), day.Group)
-		if err != nil {
-			Log.Error("Failed to load group", "group", day.Group)
-			return err
-		}
-		Log.Debug("Setting location", "location", g.Location)
-		day.Location = g.Location
+		Log.Debug("Finished Days import", "count", count)
 
-		// Save the Day
-		if err := day.Save(dbFromContext(ctx), true /*clearDays*/); err != nil {
-			Log.Error("Failed to save the day", "day", day)
-			return err
-		}
-		count++
-		Log.Debug("Saved day", "day", day)
-	}
-
-	Log.Debug("Finished Days import", "count", count)
-	return nil
+		return nil
+	})
 }
 
 func getSchedule(ctx *echo.Context) error {
