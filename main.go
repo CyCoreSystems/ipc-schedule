@@ -195,7 +195,7 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 		day.Location = g.Location
 
 		// Save the Day
-		if err := day.Save(dbFromContext(ctx)); err != nil {
+		if err := day.Save(dbFromContext(ctx), true /*clearDays*/); err != nil {
 			Log.Error("Failed to save the day", "day", day)
 			return err
 		}

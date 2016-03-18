@@ -151,12 +151,19 @@ func (d *Day) Times(now time.Time) (closestStart time.Time, closestStop time.Tim
 }
 
 // Save stores the Day in the database
-func (d *Day) Save(db *bolt.DB) error {
+func (d *Day) Save(db *bolt.DB, clearDays bool) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
 		if err != nil {
 			return err
 		}
+
+		if clearDays {
+			if err := b.DeleteBucket(daysBucket); err != nil && err != bolt.ErrBucketNotFound {
+				return err
+			}
+		}
+
 		b, err = b.CreateBucketIfNotExists(daysBucket)
 		if err != nil {
 			return err
