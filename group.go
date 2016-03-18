@@ -43,6 +43,21 @@ func (g *Group) ClearDays(tx *bolt.Tx) error {
 	return nil
 }
 
+// ClearDates clears the date schedule for the group
+func (g *Group) ClearDates(tx *bolt.Tx) error {
+	b, err := tx.CreateBucketIfNotExists([]byte(g.ID))
+	if err != nil {
+		return err
+	}
+
+	err = b.DeleteBucket(datesBucket)
+	if err != nil && err != bolt.ErrBucketNotFound {
+		return err
+	}
+
+	return nil
+}
+
 // allGroups returns the list of all groups
 func allGroups(db *bolt.DB) (list []*Group, err error) {
 	list = []*Group{}
@@ -64,15 +79,21 @@ func allGroups(db *bolt.DB) (list []*Group, err error) {
 	return
 }
 
-func getGroup(db *bolt.DB, id string) (*Group, error) {
-	var g Group
-	err := db.View(func(tx *bolt.Tx) error {
-		data := tx.Bucket(groupBucket).Get([]byte(id))
-		if len(data) == 0 {
-			return ErrNotFound
-		}
-		return decodeGroup(data, &g)
+func getGroup(db *bolt.DB, id string) (g *Group, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		g, err = getGroupWithTx(tx, id)
+		return err
 	})
+	return
+}
+
+func getGroupWithTx(tx *bolt.Tx, id string) (*Group, error) {
+	var g Group
+	data := tx.Bucket(groupBucket).Get([]byte(id))
+	if len(data) == 0 {
+		return &g, ErrNotFound
+	}
+	err := decodeGroup(data, &g)
 	return &g, err
 }
 

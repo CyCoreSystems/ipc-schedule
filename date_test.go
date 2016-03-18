@@ -176,7 +176,9 @@ func TestSaveRestore(t *testing.T) {
 			})
 
 			Convey("Saving the date should work", func() {
-				err := date.Save(dateDb)
+				err := dateDb.Update(func(tx *bolt.Tx) error {
+					return date.Save(tx)
+				})
 				So(err, ShouldBeNil)
 
 				Convey("Loading the date should work", func() {

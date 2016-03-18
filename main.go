@@ -142,36 +142,55 @@ func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.C
 }
 
 func importDates(ctx *echo.Context, file io.Reader) error {
-	r := csv.NewReader(file)
+	return dbFromContext(ctx).Update(func(tx *bolt.Tx) error {
 
-	var count int
-	for rec, err := r.Read(); err == nil; rec, err = r.Read() {
-		date, err := NewDateFromCSV(dbFromContext(ctx), rec)
-		if err != nil {
-			Log.Error("Failed to parse Date", "error", err)
-			if count > 0 {
-				Log.Error("No Dates added successfully")
+		r := csv.NewReader(file)
+
+		seenGroups := make(map[string]bool)
+
+		var count int
+		for rec, err := r.Read(); err == nil; rec, err = r.Read() {
+			date, err := NewDateFromCSV(dbFromContext(ctx), rec)
+			if err != nil {
+				Log.Error("Failed to parse Date", "error", err)
+				if count > 0 {
+					Log.Error("No Dates added successfully")
+					return err
+				}
+				continue // assume first row is header and skip
+			}
+			Log.Debug("Got Date row", "date", date)
+
+			// Ignore the row if target is ""
+			if date.Target == "" {
+				continue
+			}
+
+			// Confirm group exists
+			g, err := getGroupWithTx(tx, date.Group)
+			if err != nil {
+				Log.Error("Failed to load group", "group", date.Group)
 				return err
 			}
-			continue // assume first row is header and skip
-		}
-		Log.Debug("Got Date row", "date", date)
 
-		// Ignore the row if target is ""
-		if date.Target == "" {
-			continue
+			// if we haven't seen the group this upload, then clear the dates schedule
+			// of this group
+			if _, ok := seenGroups[g.ID]; !ok {
+				g.ClearDates(tx)
+				seenGroups[g.ID] = true // mark group as seen
+			}
+
+			if err := date.Save(tx); err != nil {
+				Log.Error("Failed to save the date", "date", date)
+				return err
+			}
+			Log.Debug("Saved date", "date", date)
+			count++
 		}
 
-		if err := date.Save(dbFromContext(ctx)); err != nil {
-			Log.Error("Failed to save the date", "date", date)
-			return err
-		}
-		Log.Debug("Saved date", "date", date)
-		count++
-	}
-
-	Log.Debug("Finished Dates import", "count", count)
-	return nil
+		Log.Debug("Finished Dates import", "count", count)
+		return nil
+	})
 }
 
 func importDays(ctx *echo.Context, file io.Reader) error {
@@ -200,7 +219,7 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 			}
 
 			// Confirm group exists
-			g, err := getGroup(dbFromContext(ctx), day.Group)
+			g, err := getGroupWithTx(tx, day.Group)
 			if err != nil {
 				Log.Error("Failed to load group", "group", day.Group)
 				return err
@@ -209,9 +228,8 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 			// if we haven't seen the group this upload, then clear the days
 			if _, ok := seenGroups[g.ID]; !ok {
 				g.ClearDays(tx)
+				seenGroups[g.ID] = true // mark group as seen
 			}
-
-			seenGroups[g.ID] = true // mark group as seen
 
 			// Copy over location to day entity
 			Log.Debug("Setting location", "location", g.Location)
@@ -228,7 +246,6 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 		}
 
 		Log.Debug("Finished Days import", "count", count)
-
 		return nil
 	})
 }

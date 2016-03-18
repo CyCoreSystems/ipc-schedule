@@ -77,22 +77,20 @@ func (d *Date) Key() []byte {
 }
 
 // Save stores the Date in the database
-func (d *Date) Save(db *bolt.DB) error {
-	return db.Update(func(tx *bolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
-		if err != nil {
-			return err
-		}
-		b, err = b.CreateBucketIfNotExists(datesBucket)
-		if err != nil {
-			return err
-		}
-		data, err := encodeDate(d)
-		if err != nil {
-			return err
-		}
-		return b.Put(d.Key(), data)
-	})
+func (d *Date) Save(tx *bolt.Tx) error {
+	b, err := tx.CreateBucketIfNotExists([]byte(d.Group))
+	if err != nil {
+		return err
+	}
+	b, err = b.CreateBucketIfNotExists(datesBucket)
+	if err != nil {
+		return err
+	}
+	data, err := encodeDate(d)
+	if err != nil {
+		return err
+	}
+	return b.Put(d.Key(), data)
 }
 
 // ToExternal exports a Date schedule to its external version
