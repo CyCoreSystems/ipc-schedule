@@ -157,6 +157,11 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 		}
 		Log.Debug("Got Date row", "date", date)
 
+		// Ignore the row if target is ""
+		if date.Target == "" {
+			continue
+		}
+
 		if err := date.Save(dbFromContext(ctx)); err != nil {
 			Log.Error("Failed to save the date", "date", date)
 			return err
@@ -187,6 +192,11 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 					return err
 				}
 				continue // assume first row is header and skip
+			}
+
+			// Ignore the row if target is ""
+			if day.Target == "" {
+				continue
 			}
 
 			// Confirm group exists

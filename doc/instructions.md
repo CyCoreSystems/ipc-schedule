@@ -25,6 +25,8 @@ There are two types of CSV import:  "days" and "dates".  "days" imports a defaul
 on the provided generic days of the week.  "dates" imports schedules for specific dates.  If there
 exists a "dates" schedule for any given time, it is used in preference to the "days" schedule.
 
+NOTE: if the target is blank (""), the row will be ignored.
+
 A "days" schedule is a CSV file with no field headers and columns of the form:
 ```
    "Group ID","Day of the Week","Start Time (HH:MM)","Stop Time (HH:MM)","Target phone number"
