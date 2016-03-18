@@ -28,6 +28,21 @@ func (g *Group) GetLocation() (*time.Location, error) {
 	return time.LoadLocation(g.Location)
 }
 
+// ClearDays clears the day for the group
+func (g *Group) ClearDays(tx *bolt.Tx) error {
+	b, err := tx.CreateBucketIfNotExists([]byte(g.ID))
+	if err != nil {
+		return err
+	}
+
+	err = b.DeleteBucket(daysBucket)
+	if err != nil && err != bolt.ErrBucketNotFound {
+		return err
+	}
+
+	return nil
+}
+
 // allGroups returns the list of all groups
 func allGroups(db *bolt.DB) (list []*Group, err error) {
 	list = []*Group{}
