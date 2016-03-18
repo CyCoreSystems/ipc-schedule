@@ -3,7 +3,10 @@ all: assets test build
 test:
 	go test
 
-build:
+generate:
+	go generate
+
+build: generate
 	go build
 
 assets:
