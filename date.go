@@ -68,6 +68,9 @@ func ActiveDate(db *bolt.DB, g *Group, t time.Time) *Date {
 		Log.Info("Date target not found", "error", err, "group", g.Name)
 		return nil
 	}
+	if d.Target == "" {
+		return nil
+	}
 	return &d
 }
 

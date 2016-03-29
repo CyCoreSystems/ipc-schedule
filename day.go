@@ -92,6 +92,9 @@ func ActiveDay(db *bolt.DB, g *Group, t time.Time) *Day {
 		Log.Error("No match", "error", err)
 		return nil
 	}
+	if d.Target == "" {
+		return nil
+	}
 	return &d
 }
 

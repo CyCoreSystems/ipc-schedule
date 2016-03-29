@@ -13,9 +13,10 @@ var groupBucket = []byte("groups")
 
 // Group describes a group's parameters
 type Group struct {
-	ID       string `json:"id"`       // group identifier
-	Name     string `json:"name"`     // group name
-	Location string `json:"timezone"` // Location / timezone
+	ID            string `json:"id"`            // group identifier
+	Name          string `json:"name"`          // group name
+	Location      string `json:"timezone"`      // Location / timezone
+	DefaultTarget string `json:"defaultTarget"` // Default target, if no schedule matches
 }
 
 // Key returns the BoltDB keyname for the group

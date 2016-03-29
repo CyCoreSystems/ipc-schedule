@@ -278,14 +278,22 @@ func getTarget(ctx *echo.Context) error {
 	// See if we have an explicit date entry
 	d := ActiveDate(dbFromContext(ctx), g, time.Now())
 	if d != nil {
+		Log.Debug("Found matching Date", "day", d)
 		return ctx.String(200, d.Target)
 	}
 
 	// Otherwise, use the day schedule
 	d2 := ActiveDay(dbFromContext(ctx), g, time.Now())
 	if d2 != nil {
+		Log.Debug("Found matching Day", "day", d2)
 		return ctx.String(200, d2.Target)
 	}
+
+	// Finally, check to see if the group has a default target
+	if g.DefaultTarget != "" {
+		return ctx.String(200, g.DefaultTarget)
+	}
+
 	return ctx.String(404, "Not found")
 }
 
@@ -299,9 +307,10 @@ func getGroups(ctx *echo.Context) error {
 
 func postGroup(ctx *echo.Context) error {
 	g := Group{
-		ID:       ctx.Form("id"),
-		Name:     ctx.Form("name"),
-		Location: ctx.Form("timezone"),
+		ID:            ctx.Form("id"),
+		Name:          ctx.Form("name"),
+		Location:      ctx.Form("timezone"),
+		DefaultTarget: ctx.Form("defaultTarget"),
 	}
 	if g.ID == "" {
 		g.ID = uuid.NewV1().String()
