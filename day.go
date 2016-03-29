@@ -234,6 +234,12 @@ type DayExternal struct {
 // proper Day schedule.
 func (e *DayExternal) ToDay() (*Day, error) {
 	var ret Day
+
+	// Short-circuit if the day has no target
+	if e.Target == "" {
+		return nil, ErrNilTarget
+	}
+
 	// 0: group
 	ret.Group = e.Group
 

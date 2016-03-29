@@ -143,6 +143,12 @@ type DateExternal struct {
 // ToDate converts an exported date schedule to a proper Date schedule
 func (e *DateExternal) ToDate(db *bolt.DB) (*Date, error) {
 	var ret Date
+
+	// Short-circuit if we have no target
+	if e.Target == "" {
+		return nil, ErrNilTarget
+	}
+
 	// 0: group
 	ret.Group = e.Group
 	if ret.Group == "" {
@@ -186,9 +192,6 @@ func (e *DateExternal) ToDate(db *bolt.DB) (*Date, error) {
 	ret.Time = diff
 
 	ret.Target = e.Target
-	if ret.Target == "" {
-		return nil, fmt.Errorf("Target/Cell is mandetory")
-	}
 
 	return &ret, nil
 

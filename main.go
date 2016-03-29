@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/csv"
+	"errors"
 	"flag"
 	"io"
 	"net/http"
@@ -31,6 +32,10 @@ var debug bool
 
 // Log is the top-level logger
 var Log log15.Logger
+
+// ErrNilTarget indicates that the row/day/date has no target
+// specified.
+var ErrNilTarget = errors.New("Empty Target")
 
 func init() {
 	flag.StringVar(&addr, "addr", ":9000", "Address binding")
@@ -143,28 +148,30 @@ func fileHandler(fn func(ctx *echo.Context, r io.Reader) error) func(ctx *echo.C
 
 func importDates(ctx *echo.Context, file io.Reader) error {
 	return dbFromContext(ctx).Update(func(tx *bolt.Tx) error {
+		Log.Debug("Got a Dates upload request")
 
 		r := csv.NewReader(file)
 
 		seenGroups := make(map[string]bool)
 
-		var count int
+		var rowCount int
+		var validCount int
 		for rec, err := r.Read(); err == nil; rec, err = r.Read() {
+			rowCount++
 			date, err := NewDateFromCSV(dbFromContext(ctx), rec)
 			if err != nil {
-				Log.Error("Failed to parse Date", "error", err)
-				if count > 0 {
-					Log.Error("No Dates added successfully")
+				if err == ErrNilTarget {
+					Log.Debug("Ignoring row with empty target")
+					continue
+				}
+				if rowCount > 1 {
+					Log.Error("Failed to parse Date", "row", rec, "error", err)
 					return err
 				}
+				Log.Debug("Ignoring first row; presuming it is a header")
 				continue // assume first row is header and skip
 			}
 			Log.Debug("Got Date row", "date", date)
-
-			// Ignore the row if target is ""
-			if date.Target == "" {
-				continue
-			}
 
 			// Confirm group exists
 			g, err := getGroupWithTx(tx, date.Group)
@@ -185,10 +192,10 @@ func importDates(ctx *echo.Context, file io.Reader) error {
 				return err
 			}
 			Log.Debug("Saved date", "date", date)
-			count++
+			validCount++
 		}
 
-		Log.Debug("Finished Dates import", "count", count)
+		Log.Debug("Finished Dates import", "validCount", validCount, "rowCount", rowCount)
 		return nil
 	})
 }
@@ -199,17 +206,24 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 
 		seenGroups := make(map[string]bool)
 
-		var count int
+		var rowCount int
+		var validCount int
 		for rec, err := r.Read(); err == nil; rec, err = r.Read() {
 			Log.Debug("Got Day row", "day", rec)
+			rowCount++
 
 			// Convert the row to a Day
 			day, err := NewDayFromCSVRow(rec)
 			if err != nil {
-				if count > 0 {
-					Log.Error("No Days added successfully")
+				if err == ErrNilTarget {
+					Log.Debug("Ignoring row with empty target")
+					continue
+				}
+				if rowCount > 1 {
+					Log.Error("Failed to parse Day", "row", rec, "error", err)
 					return err
 				}
+				Log.Debug("Ignoring first row; presuming it is a header")
 				continue // assume first row is header and skip
 			}
 
@@ -241,11 +255,11 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 				return err
 			}
 
-			count++
+			validCount++
 			Log.Debug("Saved day", "day", day)
 		}
 
-		Log.Debug("Finished Days import", "count", count)
+		Log.Debug("Finished Days import", "validCount", validCount, "rowCount", rowCount)
 		return nil
 	})
 }
