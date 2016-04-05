@@ -40,3 +40,16 @@ A "dates" schedule is a CSV file with no field headers and columns of the form:
 
   * **POST** `/sched/import/days` Add a days (generic weekly) schedule.
   * **POST** `/sched/import/dates` Add a dates (specific dates) schedule.
+
+## Dialplan
+
+To use this refirector in FreePBX, create the following context in `extensions_custom.conf`:
+```
+[ipc-schedule]
+exten => _5XXX,1,Set(target=${CURL(http://127.0.0.1:9000/target/${EXTEN})})
+   same => n,Verbose(Redirecting group ${EXTEN} to ${target})
+   same => n,Dial(SIP/${target})
+```
+
+Then, you may create custom device extensions to (e.g.) `Local/5001@ipc-schedule`.
+
