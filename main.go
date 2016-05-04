@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/coreos/fleet/log"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/satori/go.uuid"
@@ -25,6 +26,9 @@ var db *bolt.DB
 
 // addr is the listen address
 var addr string
+
+// agiaddr is the listen address for the FastAGI service
+var agiaddr string
 
 // debug enables debug mode, which uses local files
 // instead of bundled ones
@@ -39,6 +43,7 @@ var ErrNilTarget = errors.New("Empty Target")
 
 func init() {
 	flag.StringVar(&addr, "addr", ":9000", "Address binding")
+	flag.StringVar(&agiaddr, "agiaddr", ":9001", "Address binding for FastAGI service")
 	flag.BoolVar(&debug, "debug", false, "Enable debug mode, which uses separate files for web development")
 }
 
@@ -92,7 +97,7 @@ func main() {
 
 	// Data endpoints
 
-	e.Get("/target/:id", getTarget)
+	e.Get("/target/:id", getTargetHandler)
 	e.Get("/groups", getGroups)
 	e.Post("/group", postGroup)
 	e.Get("/group/:id", getGroupHandler)
@@ -112,6 +117,9 @@ func main() {
 		Log.Info("Exiting on signal")
 		os.Exit(100)
 	}()
+
+	// Start FastAGI service
+	go fastAGI(db)
 
 	// Listen for connections
 	Log.Info("Listening", "address", addr)
@@ -269,32 +277,45 @@ func getSchedule(ctx *echo.Context) error {
 }
 
 // getTarget returns the target for the present time
-func getTarget(ctx *echo.Context) error {
-	g, err := getGroup(dbFromContext(ctx), ctx.Param("id"))
+func getTargetHandler(ctx *echo.Context) error {
+	db := dbFromContext(ctx)
+	t := getTarget(db, ctx.Param("id"))
+	if t == "" {
+		return ctx.String(404, "Not found")
+	}
+
+	return ctx.String(200, t)
+}
+
+// getTarget returns the target for the present time
+func getTarget(db *bolt.DB, groupID string) string {
+	// Load the group
+	g, err := getGroup(db, groupID)
 	if err != nil {
-		return err
+		log.Error("Failed to load group", "error", err)
+		return ""
 	}
 
 	// See if we have an explicit date entry
-	d := ActiveDate(dbFromContext(ctx), g, time.Now())
+	d := ActiveDate(db, g, time.Now())
 	if d != nil {
 		Log.Debug("Found matching Date", "day", d)
-		return ctx.String(200, d.Target)
+		return d.Target
 	}
 
 	// Otherwise, use the day schedule
-	d2 := ActiveDay(dbFromContext(ctx), g, time.Now())
+	d2 := ActiveDay(db, g, time.Now())
 	if d2 != nil {
 		Log.Debug("Found matching Day", "day", d2)
-		return ctx.String(200, d2.Target)
+		return d2.Target
 	}
 
 	// Finally, check to see if the group has a default target
 	if g.DefaultTarget != "" {
-		return ctx.String(200, g.DefaultTarget)
+		return g.DefaultTarget
 	}
 
-	return ctx.String(404, "Not found")
+	return ""
 }
 
 func getGroups(ctx *echo.Context) error {
