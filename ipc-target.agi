@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Consume all variables sent by Asterisk
+while read VAR && [ -n ${VAR} ] ; do : ; done
+
+# Get the current target
+TARGET=$(curl http://localhost:9000/target/${AGI_EXTENSION})
+
+# Set IPC_TARGET channel variable to the TARGET
+echo "SET VARIABLE IPC_TARGET ${TARGET}"
+read RESPONSE
+
+exit 0
