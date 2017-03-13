@@ -220,3 +220,57 @@ func TestSaveRestore(t *testing.T) {
 		})
 	})
 }
+
+func TestDateDump(t *testing.T) {
+	groupID := "testDateDump"
+	g := &Group{ID: groupID}
+
+	list := []Date{
+		Date{
+			Group:  groupID,
+			Target: "111",
+			Date:   time.Date(2016, 2, 13, 2, 0, 0, 0, time.UTC),
+			Time:   4 * time.Hour,
+		},
+		Date{
+			Group:  groupID,
+			Target: "112",
+			Date:   time.Date(2016, 2, 14, 2, 0, 0, 0, time.UTC),
+			Time:   5 * time.Hour,
+		},
+		Date{
+			Group:  groupID,
+			Target: "113",
+			Date:   time.Date(2016, 2, 15, 2, 0, 0, 0, time.UTC),
+			Time:   6 * time.Hour,
+		},
+	}
+
+	dateDb.Update(func(tx *bolt.Tx) error {
+		return tx.DeleteBucket([]byte(groupID))
+	})
+
+	err := dateDb.Update(func(tx *bolt.Tx) error {
+		for _, d := range list {
+			err := d.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Skip("Failed to write test data to bucket for TestDateDump", err)
+		return
+	}
+
+	ret, err := DatesForGroup(dateDb, g)
+	if err != nil {
+		t.Error("Failed to get dates for group", err)
+		return
+	}
+	if len(ret) != len(list) {
+		t.Error("Dumped list did not match input list")
+		return
+	}
+}

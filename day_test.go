@@ -363,3 +363,63 @@ func TestNewDayFromCSV(t *testing.T) {
 		})
 	})
 }
+
+func TestDayDump(t *testing.T) {
+	groupID := "testDayDump"
+	g := &Group{ID: groupID}
+
+	list := []Day{
+		Day{
+			Group:    groupID,
+			Target:   "111",
+			Day:      time.Monday,
+			Start:    2 * time.Hour, // 02:00
+			Duration: 4 * time.Hour, // until 06:00
+			Location: loc.String(),
+		},
+		Day{
+			Group:    groupID,
+			Target:   "112",
+			Day:      time.Tuesday,
+			Start:    2 * time.Hour, // 02:00
+			Duration: 4 * time.Hour, // until 06:00
+			Location: loc.String(),
+		},
+		Day{
+			Group:    groupID,
+			Target:   "113",
+			Day:      time.Wednesday,
+			Start:    2 * time.Hour, // 02:00
+			Duration: 4 * time.Hour, // until 06:00
+			Location: loc.String(),
+		},
+	}
+
+	dayDb.Update(func(tx *bolt.Tx) error {
+		return tx.DeleteBucket([]byte(groupID))
+	})
+
+	err := dayDb.Update(func(tx *bolt.Tx) error {
+		for _, d := range list {
+			err := d.Save(tx)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Skip("Failed to write test data to bucket for TestDateDump", err)
+		return
+	}
+
+	ret, err := DaysForGroup(dayDb, g)
+	if err != nil {
+		t.Error("Failed to get days for group", err)
+		return
+	}
+	if len(ret) != len(list) {
+		t.Errorf("Dumped list did not match input list: (ref:%d) (actual:%d)", len(list), len(ret))
+		return
+	}
+}

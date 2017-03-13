@@ -59,7 +59,7 @@ func DaysForGroup(db *bolt.DB, g *Group) (ret []Day, err error) {
 		if b == nil {
 			return errors.New("Group bucket not found")
 		}
-		b.Bucket(daysBucket)
+		b = b.Bucket(daysBucket)
 		if b == nil {
 			return errors.New("Days bucket not found")
 		}
@@ -68,7 +68,7 @@ func DaysForGroup(db *bolt.DB, g *Group) (ret []Day, err error) {
 			var d Day
 			err = decodeDay(v, &d)
 			if err != nil {
-				Log.Error("Failed to decode date", "raw", v, "error", err)
+				Log.Error("Failed to decode day", "raw", v, "error", err)
 				continue
 			}
 			ret = append(ret, d)

@@ -42,7 +42,7 @@ func DatesForGroup(db *bolt.DB, g *Group) (ret []Date, err error) {
 		if b == nil {
 			return errors.New("Group bucket not found")
 		}
-		b.Bucket(datesBucket)
+		b = b.Bucket(datesBucket)
 		if b == nil {
 			return errors.New("Dates bucket not found")
 		}

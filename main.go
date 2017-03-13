@@ -306,13 +306,13 @@ func getSchedule(db *bolt.DB, groupID string) (*ScheduleDump, error) {
 	// Load the Date schedule
 	dates, err := DatesForGroup(db, g)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load dates")
+		Log.Error("failed to load dates", "error", err)
 	}
 
 	// Load the Date schedule
 	days, err := DaysForGroup(db, g)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load days")
+		Log.Error("failed to load days", "error", err)
 	}
 
 	return &ScheduleDump{
