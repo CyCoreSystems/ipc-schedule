@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"time"
 
@@ -32,6 +33,32 @@ func TimeToDateKey(t time.Time) []byte {
 func DateRangeFor(t time.Time) (from, to []byte) {
 	start := t.Add(-48 * time.Hour)
 	return TimeToDateKey(start), TimeToDateKey(t)
+}
+
+// DatesForGroup returns all Dates for the provided group
+func DatesForGroup(db *bolt.DB, g *Group) (ret []Date, err error) {
+	err = db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(g.Key())
+		if b == nil {
+			return errors.New("Group bucket not found")
+		}
+		b.Bucket(datesBucket)
+		if b == nil {
+			return errors.New("Dates bucket not found")
+		}
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var d Date
+			err = decodeDate(v, &d)
+			if err != nil {
+				Log.Error("Failed to decode date", "raw", v, "error", err)
+				continue
+			}
+			ret = append(ret, d)
+		}
+		return nil
+	})
+	return
 }
 
 // ActiveDate returns the currently-active Date in the schedule.

@@ -4,7 +4,6 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"flag"
 	"io"
 	"net/http"
@@ -17,6 +16,7 @@ import (
 	"github.com/coreos/fleet/log"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
 	"gopkg.in/inconshreveable/log15.v2"
 )
@@ -108,6 +108,9 @@ func main() {
 
 	e.Post("/sched/import/days", fileHandler(importDays))
 	e.Post("/sched/import/dates", fileHandler(importDates))
+
+	// Export endpoints
+	e.Get("/sched/export/:id", getScheduleHandler)
 
 	// Listen to OS kill signals
 	go func() {
@@ -272,8 +275,51 @@ func importDays(ctx *echo.Context, file io.Reader) error {
 	})
 }
 
-func getSchedule(ctx *echo.Context) error {
-	return nil
+// ScheduleDump is a dump of the database of schedules for a group
+type ScheduleDump struct {
+	// Group is the group for which the schedule is presented
+	Group *Group
+
+	// Dates is the list of explicit dates in the schedule
+	Dates []Date
+
+	// Days is the list of relative days in the schedule
+	Days []Day
+}
+
+func getScheduleHandler(ctx *echo.Context) error {
+	db := dbFromContext(ctx)
+	s, err := getSchedule(db, ctx.Param("id"))
+	if err != nil {
+		return ctx.String(500, err.Error())
+	}
+	return ctx.JSON(200, s)
+}
+
+func getSchedule(db *bolt.DB, groupID string) (*ScheduleDump, error) {
+	// Load the group
+	g, err := getGroup(db, groupID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load group")
+	}
+
+	// Load the Date schedule
+	dates, err := DatesForGroup(db, g)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load dates")
+	}
+
+	// Load the Date schedule
+	days, err := DaysForGroup(db, g)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load days")
+	}
+
+	return &ScheduleDump{
+		Group: g,
+		Dates: dates,
+		Days:  days,
+	}, nil
 }
 
 // getTarget returns the target for the present time

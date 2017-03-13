@@ -30,7 +30,7 @@ func handleAGI(db *bolt.DB, c net.Conn) {
 
 	a := agi.New(c, c)
 
-	exten, err := a.GetVariable("EXTEN")
+	exten, err := a.Get("EXTEN")
 	if err != nil {
 		Log.Error("Failed to get EXTEN variable from AGI", "error", err)
 		return
@@ -38,7 +38,7 @@ func handleAGI(db *bolt.DB, c net.Conn) {
 
 	Log.Debug("Loading target for AGI", "group", exten)
 	t := getTarget(db, exten)
-	err = a.SetVariable("IPC_TARGET", t)
+	err = a.Set("IPC_TARGET", t)
 	if err != nil {
 		Log.Error("Failed to set IPC-TARGET on AGI", "target", t, "error", err)
 	}
