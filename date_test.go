@@ -21,6 +21,34 @@ func init() {
 	}
 }
 
+func TestDateFromExternal(t *testing.T) {
+	groupID := "testDateFromExternalGroup"
+	g := Group{
+		ID:       groupID,
+		Name:     groupID,
+		Location: locString,
+	}
+	saveGroup(dateDb, &g)
+
+	ext := DateExternal{
+		Group:  groupID,
+		Target: "1",
+		Date:   "2017-03-13",
+		Start:  "20:00",
+		Stop:   "23:59",
+	}
+
+	d, err := ext.ToDate(dateDb)
+	if err != nil {
+		t.Error("failed to convert external date", err)
+		return
+	}
+	if d.Time != 239*time.Minute {
+		t.Errorf("Invalid duration: (ref:%d) (actual:%f)", 239, d.Time.Minutes())
+		return
+	}
+}
+
 func TestNewDateFromCSV(t *testing.T) {
 	g := Group{
 		ID:       "testGroup",
